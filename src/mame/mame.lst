@@ -13134,6 +13134,10 @@ ec_unkt                         // Unknown 'T' (MAB PCB) (Concept - Electrocoin)
 @source:efdt.cpp
 efdt                            // El Fin Del Tiempo - (c) 1981 Niemer
 
+@source:eg3200.cpp
+eg3200                          // Eaca EG 3200
+genie3                          // TCS Genie III
+
 @source:egghunt.cpp
 egghunt                         // (c) 1995 Invi Image
 
