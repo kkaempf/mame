@@ -27,7 +27,7 @@ Enhanced 'TRS-80'
 Banked memory (switched via port 0xFA)
  - Bank 0  0x0000 - 0xffff
    64k RAM
- - Bank 1  0x0000 - 0x2fff
+ - Bank 1  0x0000 - 0x7ff (2k boot rom)
    ROM/EPROM (up to 12k, 2k boot rom)
  - Bank 2  0x3c00 - 0x3fff
    video memory 0 (1k, 64x16, TRS-80 M1 compatible)
@@ -139,60 +139,50 @@ static void eg3200_floppies(device_slot_interface &device)
 
 void eg3200_state::eg3200_io(address_map &map)
 {
+    logerror("eg3200_state::eg3200_io\n");
 	map.global_mask(0xff);
-	map.unmap_value_high();
 	map(0xf6, 0xf6).w(FUNC(eg3200_state::crtc_addr));
 	map(0xf7, 0xf7).w(FUNC(eg3200_state::crtc_ctrl));
 	map(0xfa, 0xfa).w(FUNC(eg3200_state::port_bank_w));
-	map(0xf8, 0xfb).rw(FUNC(eg3200_state::printer_r), FUNC(eg3200_state::printer_w));
+        map(0xfd, 0xfd).rw(FUNC(eg3200_state::printer_r), FUNC(eg3200_state::printer_w));
 }
 
 void eg3200_state::eg3200_mem(address_map &map)
 {
-	map(0x0000, 0x07ff).rom();
-	map(0x37e0, 0x37e3).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::dsksel_w));
-	map(0x3800, 0x3bff).r(FUNC(eg3200_state::keyboard_r));
-	map(0x3c00, 0x3fff).ram().share(m_p_videoram);
-	map(0x4000, 0xffff).ram();
+    logerror("eg3200_state::eg3200_mem()\n");
+	map(0x0000, 0x07ff).bankr("bankr_rom").bankw("bankw_rom");
+	map(0x0800, 0x36ff).ram();
+	map(0x3700, 0x38ff).m(m_bank_dk, FUNC(address_map_bank_device::amap8));
+	map(0x3900, 0x3bff).ram();
+	map(0x3c00, 0x3fff).bankrw("bank_video0");
+	map(0x4000, 0x43ff).bankrw("bank_video1");
+	map(0x4400, 0xffff).ram();
 }
 
-void eg3200_state::eg3200_banked_mem(address_map &map)
-{
 /*
- * - Bank 0  0x0000 - 0xffff
- *   64k RAM
- * - Bank 1  0x0000 - 0x2fff
- *   ROM/EPROM (up to 12k, 2k boot rom)
- * - Bank 2  0x3c00 - 0x3fff
- *   video memory 0 (1k, 64x16, TRS-80 M1 compatible)
- * - Bank 3  0x4000 - 0x43ff / 0x4400 - 0x47ff
- *   video memory 1 (additional 1k for 80x24 video mode)
- *   video memory 2 (programmable character generator)
- * - Bank 4  0x37eX disk, 0x3800 - 0x3bff keyboard
+ * dk disk keyboard bank
+ * bank 0: disk + keyboard
+ * bank 1: ram
+ * stride: 0x500 
  */
-	// Memory Map I - Model III Mode
-	map(0x00000, 0x037ff).rom().region("maincpu", 0);
-	map(0x03800, 0x03bff).r(FUNC(eg3200_state::keyboard_r));
-	map(0x03c00, 0x03fff).bankrw(m_vidbank);        // Video RAM (Page bit selects 1K of 2K)
-	map(0x04000, 0x07fff).bankrw(m_16kbank);        // RAM
-	map(0x08000, 0x0ffff).bankrw(m_32kbanks[1]);    // RAM
-
-	// Memory Map II
-	map(0x10000, 0x137ff).bankrw(m_32kbanks[0]);    // RAM (14K)
-	map(0x13800, 0x13bff).r(FUNC(eg3200_state::keyboard_r));
-	map(0x13c00, 0x13fff).bankrw(m_vidbank);        // Video RAM
-	map(0x14000, 0x17fff).bankrw(m_16kbank);        // RAM (16K)
-	map(0x18000, 0x1ffff).bankrw(m_32kbanks[1]);    // RAM (32K)
-
-	// Memory Map III
-	map(0x20000, 0x27fff).bankrw(m_32kbanks[0]);    // RAM (32K)
-	map(0x28000, 0x2f3ff).bankrw(m_32kbanks[1]);    // RAM (29K)
-	map(0x2f400, 0x2f7ff).r(FUNC(eg3200_state::keyboard_r));
-	map(0x2f800, 0x2ffff).ram().share(m_p_videoram);    // Video RAM
-
-	// Memory Map IV
-	map(0x30000, 0x37fff).bankrw(m_32kbanks[0]);    // RAM (32K)
-	map(0x38000, 0x3ffff).bankrw(m_32kbanks[1]);    // RAM (32K)
+void eg3200_state::eg3200_bank_dk(address_map &map)
+{
+    logerror("eg3200_state::eg3200_bank_dk\n");
+    /* mapped to 0x3700 */
+        map(0x000, 0x0df).noprw();
+	map(0x0e0, 0x0e3).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::motor_w));
+        map(0x0e4, 0x0e7).noprw();
+	map(0x0e8, 0x0eb).rw(FUNC(eg3200_state::printer_r), FUNC(eg3200_state::printer_w));
+	map(0x0ec, 0x0ec).r(m_fdc, FUNC(fd1793_device::status_r));
+	map(0x0ec, 0x0ec).w(FUNC(eg3200_state::dk_37ec_w)); //w(m_fdc, FUNC(fd1793_device::cmd_w));
+	map(0x0ed, 0x0ed).rw(m_fdc, FUNC(fd1793_device::track_r), FUNC(fd1793_device::track_w));
+	map(0x0ee, 0x0ee).rw(m_fdc, FUNC(fd1793_device::sector_r), FUNC(fd1793_device::sector_w));
+	map(0x0ef, 0x0ef).rw(m_fdc, FUNC(fd1793_device::data_r), FUNC(fd1793_device::data_w));
+    /* 0x3800 - 0x38ff - keyboard */
+	map(0x100, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
+	map(0x100, 0x1ff).nopw();
+    /* bank 1 */
+        map(0x200, 0x3ff).ram();
 }
 
 static INPUT_PORTS_START( eg3200 )
@@ -273,11 +263,6 @@ static INPUT_PORTS_START( eg3200 )
 	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2)
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("F3") PORT_CODE(KEYCODE_F3)
 	PORT_BIT(0x80, 0x00, IPT_UNUSED)
-	PORT_START("CONFIG")
-	PORT_CONFNAME(    0x80, 0x00,   "Floppy Disc Drives")
-	PORT_CONFSETTING(   0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(   0x80, DEF_STR( On ) )
-	PORT_BIT(0x7f, 0x7f, IPT_UNUSED)
 INPUT_PORTS_END
 
 
@@ -308,10 +293,14 @@ FLOPPY_FORMATS_END
 void eg3200_state::eg3200(machine_config &config)
 {
 	/* basic machine hardware */
-	Z80(config, m_maincpu, 20.2752_MHz_XTAL / 10);
+	Z80(config, m_maincpu, 4_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &eg3200_state::eg3200_mem);
 	m_maincpu->set_addrmap(AS_IO, &eg3200_state::eg3200_io);
-	m_maincpu->set_periodic_int(FUNC(eg3200_state::rtc_interrupt), attotime::from_hz(20.2752_MHz_XTAL / 10 / 67584));
+	m_maincpu->set_periodic_int(FUNC(eg3200_state::rtc_interrupt), attotime::from_hz(4_MHz_XTAL / 100000)); /* 40Hz, 25 ms */
+
+        RAM(config, RAM_TAG).set_default_size("64K");
+
+	ADDRESS_MAP_BANK(config, "bank_dk").set_map(&eg3200_state::eg3200_bank_dk).set_options(ENDIANNESS_LITTLE, 8, 11, 0x200); /* 0x000 - 0x3ff -> 11 bits */
 
 	/* video hardware */
 	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
@@ -348,7 +337,7 @@ void eg3200_state::eg3200(machine_config &config)
 
 
 ROM_START(eg3200)
-	ROM_REGION(0x0800, "maincpu",0)
+	ROM_REGION(0x3000, "bios",0)
 	ROM_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267))
 
 	ROM_REGION(0x0800, "chargen",0)
@@ -356,7 +345,7 @@ ROM_START(eg3200)
 ROM_END
 
 ROM_START(genie3)
-	ROM_REGION(0x0800, "maincpu",0)
+	ROM_REGION(0x3000, "bios",0)
 	ROM_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267))
 
 	ROM_REGION(0x0800, "chargen",0)
