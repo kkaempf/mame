@@ -26,16 +26,60 @@ READ8_MEMBER( eg3200_state::printer_r )
 	return m_cent_status_in->read();
 }
 
+
+/* set density, write cmd */
+WRITE8_MEMBER( eg3200_state::dk_37ec_w)
+{
+    if ((data & 0xF8) == 0xF8) {
+	// switch fm/mfm
+	m_fdc->dden_w(BIT(data, 0));
+//        logerror("0x37ec w %s-density\n", (BIT(data, 0))?"double":"single");
+    }
+    else {
+//        logerror("eg3200_state::cmd_w %02x\n", data);
+        m_fdc->cmd_w(data);
+    }
+}
+
+WRITE8_MEMBER( eg3200_state::motor_w )
+{
+//    logerror("eg3200_state::motor_w %02x\n", data);
+	m_floppy = nullptr;
+
+	if (BIT(data, 0)) m_floppy = m_floppy0->get_device();
+	if (BIT(data, 1)) m_floppy = m_floppy1->get_device();
+//	if (BIT(data, 2)) m_floppy = m_floppy2->get_device();
+//	if (BIT(data, 3)) m_floppy = m_floppy3->get_device();
+
+	m_fdc->set_floppy(m_floppy);
+
+	if (m_floppy)
+	{
+//            logerror("\tmotor_w %02x\n", data);
+		m_floppy->mon_w(1);
+		m_floppy->ss_w(BIT(data, 4)); /* side select */
+		m_timeout = 200;
+	}
+}
+
 /*
  * FA: memory bank switching, inverted (bit set to 0 => bank enabled)
- * - bit 0 : bank 1
- * - bit 1 : bank 2
- * - bit 2 : bank 3
- * - bit 3 : bank 4
+ * bank 0 - 64k memory
+ * - bit 0 : bank 1 - ROM 0x0000 - 0x2fff
+ * - bit 1 : bank 2 - 16x64 Video 0x3c00 - 0x3fff
+ * - bit 2 : bank 3 - 80x25 Video 0x4000 - 0x43ff (+ 0x4400 - 0x47ff optinal)
+ * - bit 3 : bank 4 - Disk 0x37e0 - 0x37ef + Keyboard 0x3800 - 0x3bff
  */
 
 WRITE8_MEMBER( eg3200_state::port_bank_w )
 {
+    /* swap in ram */
+    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
+
+    membank("bankr_rom")->set_entry(BIT(data, 0));
+    membank("bank_video0")->set_entry(BIT(data, 1));
+    membank("bank_video1")->set_entry(BIT(data, 2));
+    m_bank_dk->set_bank(BIT(data, 3));
 }
 
 /*
@@ -45,12 +89,40 @@ WRITE8_MEMBER( eg3200_state::port_bank_w )
 
 WRITE8_MEMBER( eg3200_state::crtc_ctrl )
 {
-    logerror("crtc_ctrl %02x\n", data);
+    if (m_crtc_reg == 1) /* horiz displayed */
+            m_vidmode = (data == 80) ? 1 : 0; /* poor mans 6845 emulation */
+    logerror("crtc %02x / %u\n", data, data);
 }
 
 WRITE8_MEMBER( eg3200_state::crtc_addr )
 {
-    logerror("crtc_addr %02x\n", data);
+    const char *regs[] = {
+        "Horiz total",
+        "Horiz displayed",
+        "HSync pos",
+        "HSync width",
+        "Vert total",
+        "Vert adjust",
+        "Vert displayed",
+        "VSync pos",
+        "Interlace",
+        "Max scan line addr",
+        "Cursor start",
+        "Cursor end",
+        "Start addr (H)",
+        "Start addr (L)",
+        "Cursor (H)",
+        "Cursor (L)",
+        "Light pen (H)",
+        "Light pen (L)"
+    };
+    m_crtc_reg = data; 
+    if (data < 18) {
+            logerror("crtc %s: ", regs[data]);
+    }
+    else {
+            logerror("crtc reg %d ", data);
+    }
 }
 
 
@@ -113,71 +185,23 @@ READ8_MEMBER( eg3200_state::irq_status_r )
 	return result;
 }
 
-/* Selection of drive and parameters - d6..d5 not emulated.
- A write also causes the selected drive motor to turn on for about 3 seconds.
- When the motor turns off, the drive is deselected.
-   0x37e0
-     bit 0: drive 0
-     bit 1: drive 1
-     bit 2: drive 2
-     bit 3: drive 3
-     bit 4: side select (0 = front, 1 = back)
-     bit 6: -
-     bit 7: -
- */
-/*
- M4:
-    d7 1=MFM, 0=FM
-    d6 1=Wait
-    d5 1=Write Precompensation enabled
-    d4 0=Side 0, 1=Side 1
-    d3 1=select drive 3
-    d2 1=select drive 2
-    d1 1=select drive 1
-    d0 1=select drive 0
- */
-
-WRITE8_MEMBER( eg3200_state::dsksel_w )
-{
-	if (BIT(data, 6))
-	{
-		if (m_drq_off && m_intrq_off)
-		{
-			m_maincpu->set_input_line(Z80_INPUT_LINE_WAIT, ASSERT_LINE);
-			m_wait = true;
-		}
-	}
-	else
-	{
-		m_maincpu->set_input_line(Z80_INPUT_LINE_WAIT, CLEAR_LINE);
-		m_wait = false;
-	}
-
-	m_floppy = nullptr;
-
-	if (BIT(data, 0)) m_floppy = m_floppy0->get_device();
-	if (BIT(data, 1)) m_floppy = m_floppy1->get_device();
-
-	m_fdc->set_floppy(m_floppy);
-
-	if (m_floppy)
-	{
-		m_floppy->mon_w(0);
-		m_floppy->ss_w(BIT(data, 4));
-		m_timeout = 1600;
-	}
-
-	m_fdc->dden_w(!BIT(data, 7));
-}
-
 /*************************************
  *
  *      Interrupt handlers.
  *
  *************************************/
 
+#include <sys/time.h>
+
 INTERRUPT_GEN_MEMBER(eg3200_state::rtc_interrupt)
 {
+/*
+    static suseconds_t last_tv = 0;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    logerror("\trtc_interrupt %ld:%03ld (%ld)\n", tv.tv_sec, tv.tv_usec, tv.tv_usec-last_tv);
+    last_tv = tv.tv_usec;
+ */
 	if (m_timeout)
 	{
 		m_timeout--;
@@ -217,27 +241,13 @@ WRITE_LINE_MEMBER(eg3200_state::drq_w)
 
 
 /*************************************
- *                                   *
- *      Memory handlers              *
- *                                   *
- *************************************/
-
-READ8_MEMBER( eg3200_state::wd179x_r )
-{
-	uint8_t data = 0xff;
-	if (BIT(m_io_config->read(), 7))
-		data = m_fdc->status_r();
-
-	return data;
-}
-
-/*************************************
  *      Keyboard                     *
  *************************************/
 READ8_MEMBER( eg3200_state::keyboard_r )
 {
 	u8 i, result = 0;
-
+if (offset == 0x30)
+            return (u8)0x04; /* "0": 0x01, "1": 0x02, "2": 0x04 */
 	for (i = 0; i < 8; i++)
 		if (BIT(offset, i))
 			result |= m_io_keyboard[i]->read();
@@ -252,28 +262,43 @@ READ8_MEMBER( eg3200_state::keyboard_r )
 
 void eg3200_state::machine_start()
 {
-	m_mode = 0; /* vide mode 1: 32, 0: 64 chars per line */
+    logerror("eg3200_state::machine_start()\n");
+	m_vidmode = 0;
 	m_reg_load = 1;
 	m_nmi_data = 0;
 	m_timeout = 1;
 	m_wait = 0;
-/*
-	m_bank->set_stride(0x00000);
-	m_bank->space(0).unmap_readwrite(0x08000, 0x0ffff);
-	m_16kbank->configure_entries(0, 8, m_mainram->pointer() + 0x00000, 0x00000);
-	m_vidbank->configure_entries(0, 2, &m_p_videoram[0], 0x0400);
-*/
+        m_mem_video0 = std::make_unique<uint8_t[]>(0x0400);
+        m_mem_video1 = std::make_unique<uint8_t[]>(0x0400);
+	uint8_t *rom = memregion("bios")->base();
+	uint8_t *ram = m_mainram->pointer();
+
+	membank("bankr_rom")->configure_entry(0, &rom[0]);
+	membank("bankr_rom")->configure_entry(1, &ram[0]);
+	membank("bankw_rom")->configure_entry(0, &ram[0]);
+	membank("bank_video0")->configure_entry(0, m_mem_video0.get());
+	membank("bank_video0")->configure_entry(1, &ram[0x3c00]);
+	membank("bank_video1")->configure_entry(0, m_mem_video1.get());
+	membank("bank_video1")->configure_entry(1, &ram[0x4000]);
+    logerror("eg3200_state::machine_start() done m_mem_video0 %p, m_mem_video1 %p\n", m_mem_video0.get(), m_mem_video1.get());
  }
 
 void eg3200_state::machine_reset()
 {
+    logerror("eg3200_state::machine_reset()\n");
 	m_size_store = 0xff;
 	m_drq_off = true;
 	m_intrq_off = true;
-        m_mode = 0;
-	address_space &mem = m_maincpu->space(AS_PROGRAM);
+        m_vidmode = 0;
 
-	port_bank_w(mem, 0, 1);    // enable rom
+        /* rom, video0, and dskkbd */
+        membank("bankr_rom")->set_entry(0);
+        membank("bankw_rom")->set_entry(0);
+        membank("bank_video0")->set_entry(0);
+        membank("bank_video1")->set_entry(1);
+        m_bank_dk->set_bank(0);
+
+    logerror("eg3200_state::machine_reset() done\n");
 }
 
 
