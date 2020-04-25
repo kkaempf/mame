@@ -188,10 +188,10 @@ void eg3200_state::eg3200_bank_dk(address_map &map)
 	map(0x0ed, 0x0ed).rw(m_fdc, FUNC(fd1793_device::track_r), FUNC(fd1793_device::track_w));
 	map(0x0ee, 0x0ee).rw(m_fdc, FUNC(fd1793_device::sector_r), FUNC(fd1793_device::sector_w));
 	map(0x0ef, 0x0ef).rw(m_fdc, FUNC(fd1793_device::data_r), FUNC(fd1793_device::data_w));
-        map(0x0ff, 0x100).noprw();
+        map(0x0ff, 0x0ff).noprw();
     /* 0x3801 - 0x38ff - keyboard */
-	map(0x101, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
-	map(0x101, 0x1ff).nopw();
+	map(0x100, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
+	map(0x100, 0x1ff).nopw();
     /* bank 1 */
         map(0x200, 0x3ff).ram();
 }
