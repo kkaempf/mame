@@ -243,13 +243,45 @@ WRITE_LINE_MEMBER(eg3200_state::intrq_w)
  *************************************/
 READ8_MEMBER( eg3200_state::keyboard_r )
 {
-	u8 i, result = 0;
-if (offset == 0x30)
-            return (u8)0x04; /* "0": 0x01, "1": 0x02, "2": 0x04 */
-	for (i = 0; i < 8; i++)
-		if (BIT(offset, i))
-			result |= m_io_keyboard[i]->read();
+	u8 result = 0;
 
+        switch (offset & 0xff) {
+        case 0x01:
+            result |= m_io_keyboard[0]->read();
+            break;
+        case 0x02:
+            result |= m_io_keyboard[1]->read();
+            break;
+        case 0x04:
+            result |= m_io_keyboard[2]->read();
+            break;
+        case 0x08:
+            result |= m_io_keyboard[3]->read();
+            break;
+        case 0x10:
+            result |= m_io_keyboard[4]->read();
+            break;
+        case 0x20:
+            result |= m_io_keyboard[5]->read();
+            break;
+        case 0x40:
+            result |= m_io_keyboard[6]->read();
+            break;
+        case 0x80:
+            result |= m_io_keyboard[7]->read();
+            break;
+        case 0xa0:
+            result |= m_io_keyboard[8]->read();
+            break;
+        case 0xc0:
+            result |= m_io_keyboard[9]->read();
+            break;
+        case 0xe0:
+            result |= m_io_keyboard[10]->read();
+            break;
+        default:
+            break;
+        }
 	return result;
 }
 
@@ -260,7 +292,6 @@ if (offset == 0x30)
 
 void eg3200_state::machine_start()
 {
-    logerror("eg3200_state::machine_start()\n");
 	m_vidmode = 0;
 	m_reg_load = 1;
 	m_nmi_data = 0;
@@ -277,12 +308,10 @@ void eg3200_state::machine_start()
 	membank("bank_video0")->configure_entry(1, &ram[0x3c00]);
 	membank("bank_video1")->configure_entry(0, m_mem_video1.get());
 	membank("bank_video1")->configure_entry(1, &ram[0x4000]);
-    logerror("eg3200_state::machine_start() done m_mem_video0 %p, m_mem_video1 %p\n", m_mem_video0.get(), m_mem_video1.get());
  }
 
 void eg3200_state::machine_reset()
 {
-    logerror("eg3200_state::machine_reset()\n");
 	m_size_store = 0xff;
         m_irq = 0;
         m_vidmode = 0;
@@ -293,8 +322,6 @@ void eg3200_state::machine_reset()
         membank("bank_video0")->set_entry(0);
         membank("bank_video1")->set_entry(1);
         m_bank_dk->set_bank(0);
-
-    logerror("eg3200_state::machine_reset() done\n");
 }
 
 

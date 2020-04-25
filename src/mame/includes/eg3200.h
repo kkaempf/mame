@@ -91,7 +91,7 @@ private:
 	optional_device<fd1793_device> m_fdc;
 	optional_device<floppy_connector> m_floppy0;
 	optional_device<floppy_connector> m_floppy1;
-	required_ioport_array<8> m_io_keyboard;
+	required_ioport_array<11> m_io_keyboard;
 };
 
 #endif // MAME_INCLUDES_EG3200_H
