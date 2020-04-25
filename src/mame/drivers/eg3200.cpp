@@ -146,17 +146,24 @@ static void eg3200_floppies(device_slot_interface &device)
 void eg3200_state::eg3200_io(address_map &map)
 {
 	map.global_mask(0xff);
+        map(0x00, 0xf4).noprw();
         map(0xf5, 0xf5).noprw(); /* video invert */
 	map(0xf6, 0xf6).w(FUNC(eg3200_state::crtc_addr));
+        map(0xf6, 0xf6).nopr();
 	map(0xf7, 0xf7).w(FUNC(eg3200_state::crtc_ctrl));
+        map(0xf7, 0xf7).nopr();
+        map(0xf8, 0xf9).noprw();
 	map(0xfa, 0xfa).w(FUNC(eg3200_state::port_bank_w));
+        map(0xfa, 0xfa).nopr();
+        map(0xfb, 0xfc).noprw();
         map(0xfd, 0xfd).rw(FUNC(eg3200_state::printer_r), FUNC(eg3200_state::printer_w));
+        map(0xfe, 0xff).noprw();
 }
 
 void eg3200_state::eg3200_mem(address_map &map)
 {
-	map(0x0000, 0x07ff).bankr("bankr_rom").bankw("bankw_rom");
-	map(0x0800, 0x36ff).ram();
+	map(0x0000, 0x0fff).bankr("bankr_rom").bankw("bankw_rom");
+	map(0x1000, 0x36ff).ram();
 	map(0x3700, 0x38ff).m(m_bank_dk, FUNC(address_map_bank_device::amap8));
 	map(0x3900, 0x3bff).ram();
 	map(0x3c00, 0x3fff).bankrw("bank_video0");
@@ -181,9 +188,10 @@ void eg3200_state::eg3200_bank_dk(address_map &map)
 	map(0x0ed, 0x0ed).rw(m_fdc, FUNC(fd1793_device::track_r), FUNC(fd1793_device::track_w));
 	map(0x0ee, 0x0ee).rw(m_fdc, FUNC(fd1793_device::sector_r), FUNC(fd1793_device::sector_w));
 	map(0x0ef, 0x0ef).rw(m_fdc, FUNC(fd1793_device::data_r), FUNC(fd1793_device::data_w));
-    /* 0x3800 - 0x38ff - keyboard */
-	map(0x100, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
-	map(0x100, 0x1ff).nopw();
+        map(0x0ff, 0x100).noprw();
+    /* 0x3801 - 0x38ff - keyboard */
+	map(0x101, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
+	map(0x101, 0x1ff).nopw();
     /* bank 1 */
         map(0x200, 0x3ff).ram();
 }
@@ -371,15 +379,19 @@ void eg3200_state::eg3200(machine_config &config)
 
 
 ROM_START(eg3200)
-	ROM_REGION(0x3000, "bios",0)
-	ROM_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267))
+	ROM_REGION(0x1000, "bios",0)
+	ROM_SYSTEM_BIOS(0, "original", "EG3200 default rom")
+	ROMX_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267), ROM_BIOS(0))
+	ROM_SYSTEM_BIOS(1, "holte", "Holte CP/M rom")
+	ROMX_LOAD("eg3200_holte_system.z27",  0x0000, 0x1000, CRC(b01fefea) SHA1(b64b1147e52499f74b3b9ff038faec079677d293), ROM_BIOS(1))
 
-	ROM_REGION(0x0800, "chargen",0)
-	ROM_LOAD("eg3200_video.z23", 0x0000, 0x0800, CRC(74aeca3b) SHA1(60071dea1177202fa727dc12c828fe097f0c7952))
+        ROM_REGION(0x0800, "chargen",0)
+	ROMX_LOAD("eg3200_video.z23", 0x0000, 0x0800, CRC(74aeca3b) SHA1(60071dea1177202fa727dc12c828fe097f0c7952), ROM_BIOS(0))
+	ROMX_LOAD("eg3200_holte_video.z23",  0x0000, 0x0800, CRC(87206dda) SHA1(5cf03f516228cba1789a82241ab015b688a58d9a), ROM_BIOS(1))
 ROM_END
 
 ROM_START(genie3)
-	ROM_REGION(0x3000, "bios",0)
+	ROM_REGION(0x3000, "maincpu",0)
 	ROM_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267))
 
 	ROM_REGION(0x0800, "chargen",0)
