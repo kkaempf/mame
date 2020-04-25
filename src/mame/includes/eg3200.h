@@ -60,7 +60,6 @@ private:
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
 	INTERRUPT_GEN_MEMBER(fdc_interrupt);
 	DECLARE_WRITE_LINE_MEMBER(intrq_w);
-	DECLARE_WRITE_LINE_MEMBER(drq_w);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(quickload_cb);
 	uint32_t screen_update_eg3200(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -79,9 +78,6 @@ private:
 	uint8_t m_crtc_reg;
 	uint8_t m_size_store;
 	uint16_t m_timeout;
-	bool m_wait;
-	bool m_drq_off;
-	bool m_intrq_off;
 	std::unique_ptr<uint8_t[]> m_mem_video0;
 	std::unique_ptr<uint8_t[]> m_mem_video1;
 	floppy_image_device *m_floppy;

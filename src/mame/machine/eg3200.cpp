@@ -5,6 +5,8 @@
 #include "emu.h"
 #include "includes/eg3200.h"
 
+#define IRQ_RTC      0x80    /* RTC interrupt */
+#define IRQ_FDC      0x40    /* FDC interrupt */
 
 /*
  * FD: printer port (output = data, input = status)
@@ -32,7 +34,7 @@ WRITE8_MEMBER( eg3200_state::dk_37ec_w)
 {
     if ((data & 0xF8) == 0xF8) {
 	// switch fm/mfm
-	m_fdc->dden_w(BIT(data, 0));
+	m_fdc->dden_w(~BIT(data, 0));
 //        logerror("0x37ec w %s-density\n", (BIT(data, 0))?"double":"single");
     }
     else {
@@ -56,7 +58,7 @@ WRITE8_MEMBER( eg3200_state::motor_w )
 	if (m_floppy)
 	{
 //            logerror("\tmotor_w %02x\n", data);
-		m_floppy->mon_w(1);
+		m_floppy->mon_w(0);
 		m_floppy->ss_w(BIT(data, 4)); /* side select */
 		m_timeout = 200;
 	}
@@ -74,7 +76,7 @@ WRITE8_MEMBER( eg3200_state::motor_w )
 WRITE8_MEMBER( eg3200_state::port_bank_w )
 {
     /* swap in ram */
-    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
+//    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
 
     membank("bankr_rom")->set_entry(BIT(data, 0));
     membank("bank_video0")->set_entry(BIT(data, 1));
@@ -91,11 +93,12 @@ WRITE8_MEMBER( eg3200_state::crtc_ctrl )
 {
     if (m_crtc_reg == 1) /* horiz displayed */
             m_vidmode = (data == 80) ? 1 : 0; /* poor mans 6845 emulation */
-    logerror("crtc %02x / %u\n", data, data);
+//    logerror("crtc %02x / %u\n", data, data);
 }
 
 WRITE8_MEMBER( eg3200_state::crtc_addr )
 {
+    /*
     const char *regs[] = {
         "Horiz total",
         "Horiz displayed",
@@ -116,13 +119,15 @@ WRITE8_MEMBER( eg3200_state::crtc_addr )
         "Light pen (H)",
         "Light pen (L)"
     };
-    m_crtc_reg = data; 
+
     if (data < 18) {
             logerror("crtc %s: ", regs[data]);
     }
     else {
             logerror("crtc reg %d ", data);
     }
+    */
+    m_crtc_reg = data; 
 }
 
 
@@ -179,6 +184,12 @@ WRITE8_MEMBER( eg3200_state::port_f5_w )
  */
 READ8_MEMBER( eg3200_state::irq_status_r )
 {
+/* Whenever an interrupt occurs, 37E0 is read to see what devices require service.
+    d7 = RTC
+    d6 = FDC
+    All interrupting devices are serviced in a single interrupt. There is a mask byte,
+    which is dealt with by the DOS. We take the opportunity to reset the cpu INT line. */
+//    logerror("irq_status_r %02x\n", m_irq);
 	u8 result = m_irq;
 	m_maincpu->set_input_line(0, CLEAR_LINE);
 	m_irq = 0;
@@ -195,50 +206,39 @@ READ8_MEMBER( eg3200_state::irq_status_r )
 
 INTERRUPT_GEN_MEMBER(eg3200_state::rtc_interrupt)
 {
+	m_irq |= IRQ_RTC;
+	m_maincpu->set_input_line(0, HOLD_LINE);
 /*
     static suseconds_t last_tv = 0;
     struct timeval tv;
     gettimeofday(&tv, NULL);
     logerror("\trtc_interrupt %ld:%03ld (%ld)\n", tv.tv_sec, tv.tv_usec, tv.tv_usec-last_tv);
     last_tv = tv.tv_usec;
- */
+
 	if (m_timeout)
 	{
 		m_timeout--;
 		if (m_timeout == 0)
-			if (m_floppy)
+			if (m_floppy) {
+                            logerror("%s timeout\n", __func__);
 				m_floppy->mon_w(1);  // motor off
+                        }
 	}
+ */
 }
 
 // The floppy sector has been read. Enable CPU and NMI.
 WRITE_LINE_MEMBER(eg3200_state::intrq_w)
 {
-	m_intrq_off = state ? false : true;
+//    logerror("\tintrq_w %02x\n", state);
 	if (state)
 	{
-		m_maincpu->set_input_line(Z80_INPUT_LINE_WAIT, CLEAR_LINE);
-		m_wait = false;
-		if (BIT(m_nmi_mask, 7))
-		{
-			m_nmi_data |= 0x80;
-			//m_maincpu->pulse_input_line(INPUT_LINE_NMI, attotime::zero);
-			m_maincpu->set_input_line(INPUT_LINE_NMI, HOLD_LINE);
-		}
+		m_irq |= IRQ_FDC;
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	}
+	else
+		m_irq &= ~IRQ_FDC;
 }
-
-// The next byte from floppy is available. Enable CPU so it can get the byte.
-WRITE_LINE_MEMBER(eg3200_state::drq_w)
-{
-	m_drq_off = state ? false : true;
-	if (state)
-	{
-		m_maincpu->set_input_line(Z80_INPUT_LINE_WAIT, CLEAR_LINE);
-		m_wait = false;
-	}
-}
-
 
 /*************************************
  *      Keyboard                     *
@@ -267,7 +267,6 @@ void eg3200_state::machine_start()
 	m_reg_load = 1;
 	m_nmi_data = 0;
 	m_timeout = 1;
-	m_wait = 0;
         m_mem_video0 = std::make_unique<uint8_t[]>(0x0400);
         m_mem_video1 = std::make_unique<uint8_t[]>(0x0400);
 	uint8_t *rom = memregion("bios")->base();
@@ -287,8 +286,7 @@ void eg3200_state::machine_reset()
 {
     logerror("eg3200_state::machine_reset()\n");
 	m_size_store = 0xff;
-	m_drq_off = true;
-	m_intrq_off = true;
+        m_irq = 0;
         m_vidmode = 0;
 
         /* rom, video0, and dskkbd */

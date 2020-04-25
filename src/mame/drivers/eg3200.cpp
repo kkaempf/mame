@@ -139,7 +139,6 @@ static void eg3200_floppies(device_slot_interface &device)
 
 void eg3200_state::eg3200_io(address_map &map)
 {
-    logerror("eg3200_state::eg3200_io\n");
 	map.global_mask(0xff);
 	map(0xf6, 0xf6).w(FUNC(eg3200_state::crtc_addr));
 	map(0xf7, 0xf7).w(FUNC(eg3200_state::crtc_ctrl));
@@ -149,7 +148,6 @@ void eg3200_state::eg3200_io(address_map &map)
 
 void eg3200_state::eg3200_mem(address_map &map)
 {
-    logerror("eg3200_state::eg3200_mem()\n");
 	map(0x0000, 0x07ff).bankr("bankr_rom").bankw("bankw_rom");
 	map(0x0800, 0x36ff).ram();
 	map(0x3700, 0x38ff).m(m_bank_dk, FUNC(address_map_bank_device::amap8));
@@ -167,7 +165,6 @@ void eg3200_state::eg3200_mem(address_map &map)
  */
 void eg3200_state::eg3200_bank_dk(address_map &map)
 {
-    logerror("eg3200_state::eg3200_bank_dk\n");
     /* mapped to 0x3700 */
         map(0x000, 0x0df).noprw();
 	map(0x0e0, 0x0e3).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::motor_w));
@@ -296,7 +293,7 @@ void eg3200_state::eg3200(machine_config &config)
 	Z80(config, m_maincpu, 4_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &eg3200_state::eg3200_mem);
 	m_maincpu->set_addrmap(AS_IO, &eg3200_state::eg3200_io);
-	m_maincpu->set_periodic_int(FUNC(eg3200_state::rtc_interrupt), attotime::from_hz(4_MHz_XTAL / 100000)); /* 40Hz, 25 ms */
+	m_maincpu->set_periodic_int(FUNC(eg3200_state::rtc_interrupt), attotime::from_hz(40)); /* 40Hz, 25 ms */
 
         RAM(config, RAM_TAG).set_default_size("64K");
 
@@ -313,9 +310,8 @@ void eg3200_state::eg3200(machine_config &config)
 
 	QUICKLOAD(config, "quickload", "cmd", attotime::from_seconds(1)).set_load_callback(FUNC(eg3200_state::quickload_cb));
 
-	FD1793(config, m_fdc, 4_MHz_XTAL / 4);
+	FD1793(config, m_fdc, 4_MHz_XTAL / 4); /* 1 MHz -> 5.25", 2 MHz -> 8" */
 	m_fdc->intrq_wr_callback().set(FUNC(eg3200_state::intrq_w));
-	m_fdc->drq_wr_callback().set(FUNC(eg3200_state::drq_w));
 
 	// Internal drives
 	FLOPPY_CONNECTOR(config, "fdc:0", eg3200_floppies, "sssd", eg3200_state::floppy_formats).enable_sound(true);
