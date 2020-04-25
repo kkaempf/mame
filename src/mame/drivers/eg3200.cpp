@@ -128,6 +128,7 @@ E0: RTC addr/data
 #include "screen.h"
 #include "speaker.h"
 
+#include "formats/hxchfe_dsk.h"
 #include "formats/trs80_dsk.h"
 #include "formats/dmk_dsk.h"
 
@@ -140,6 +141,7 @@ static void eg3200_floppies(device_slot_interface &device)
 void eg3200_state::eg3200_io(address_map &map)
 {
 	map.global_mask(0xff);
+        map(0xf5, 0xf5).noprw(); /* video invert */
 	map(0xf6, 0xf6).w(FUNC(eg3200_state::crtc_addr));
 	map(0xf7, 0xf7).w(FUNC(eg3200_state::crtc_ctrl));
 	map(0xfa, 0xfa).w(FUNC(eg3200_state::port_bank_w));
@@ -283,6 +285,7 @@ GFXDECODE_END
 
 
 FLOPPY_FORMATS_MEMBER( eg3200_state::floppy_formats )
+	FLOPPY_HFE_FORMAT,
 	FLOPPY_TRS80_FORMAT,
 	FLOPPY_DMK_FORMAT
 FLOPPY_FORMATS_END
