@@ -8,6 +8,9 @@ Video Genie III - german marketing name
 
 https://www.old-computers.com/museum/computer.asp?c=130
 
+ROMs (boot and character generator needed)
+http://oldcomputers-ddns.org/public/pub/rechner/eaca/genie_3/roms/index.html
+
 Enhanced 'TRS-80'
 
 - z80A (1.77 and 4.0 MHz clock)
@@ -129,6 +132,8 @@ E0: RTC addr/data
 #include "speaker.h"
 
 #include "formats/hxchfe_dsk.h"
+#include "formats/imd_dsk.h"
+#include "formats/dmk_dsk.h"
 #include "formats/trs80_dsk.h"
 #include "formats/dmk_dsk.h"
 
@@ -170,8 +175,7 @@ void eg3200_state::eg3200_bank_dk(address_map &map)
     /* mapped to 0x3700 */
         map(0x000, 0x0df).noprw();
 	map(0x0e0, 0x0e3).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::motor_w));
-        map(0x0e4, 0x0e7).noprw();
-	map(0x0e8, 0x0eb).rw(FUNC(eg3200_state::printer_r), FUNC(eg3200_state::printer_w));
+        map(0x0e4, 0x0eb).noprw();
 	map(0x0ec, 0x0ec).r(m_fdc, FUNC(fd1793_device::status_r));
 	map(0x0ec, 0x0ec).w(FUNC(eg3200_state::dk_37ec_w)); //w(m_fdc, FUNC(fd1793_device::cmd_w));
 	map(0x0ed, 0x0ed).rw(m_fdc, FUNC(fd1793_device::track_r), FUNC(fd1793_device::track_w));
@@ -315,6 +319,8 @@ GFXDECODE_END
 
 FLOPPY_FORMATS_MEMBER( eg3200_state::floppy_formats )
 	FLOPPY_HFE_FORMAT,
+	FLOPPY_IMD_FORMAT,
+	FLOPPY_DMK_FORMAT,
 	FLOPPY_TRS80_FORMAT,
 	FLOPPY_DMK_FORMAT
 FLOPPY_FORMATS_END
