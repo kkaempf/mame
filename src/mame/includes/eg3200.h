@@ -67,7 +67,7 @@ private:
 	void eg3200_mem(address_map &map);
 	void eg3200_bank_dk(address_map &map);
 
-	uint8_t m_vidmode; /* video mode  0: 16x64, 1: 24x80 */
+	uint8_t m_vidmode; /* video mode  0: 16x64, 1: 24x80, 2: 25x80 */
 	uint8_t m_irq;
 	uint8_t m_mask;
 	uint8_t m_nmi_mask;

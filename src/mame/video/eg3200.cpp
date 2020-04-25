@@ -17,9 +17,21 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
 {
 	uint8_t y,ra,chr,gfx,gfxbit;
 	uint16_t sy=0,ma=0,x;
-	uint8_t cols = (m_vidmode == 1) ? 80 : 64;
-        uint8_t rows = (m_vidmode == 1) ? 25 : 16;
+	uint8_t cols;
+        uint8_t rows;
 
+        if (m_vidmode == 1) {
+            rows = 24;
+            cols = 80;
+        }
+        else if (m_vidmode == 2) {
+            rows = 25;
+            cols = 80;
+        }
+        else {
+            rows = 16;
+            cols = 64;
+        }
 	if (m_vidmode != m_size_store)
 	{
 		m_size_store = m_vidmode;
