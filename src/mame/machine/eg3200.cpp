@@ -89,8 +89,17 @@ WRITE8_MEMBER( eg3200_state::port_bank_w )
 
 WRITE8_MEMBER( eg3200_state::crtc_ctrl )
 {
-    if (m_crtc_reg == 1) /* horiz displayed */
-            m_vidmode = (data == 80) ? 1 : 0; /* poor mans 6845 emulation */
+    switch (m_crtc_reg) {
+    case 1: /* horiz displayed */
+        m_vidmode = (data == 80) ? 1 : 0; /* poor mans 6845 emulation */
+        break;
+    case 6: /* vert displayed */
+        if (m_vidmode > 0)
+            m_vidmode = (data == 25) ? 2 : 1;
+        else
+            m_vidmode = 0;
+        break;
+    }
 //    logerror("crtc %02x / %u\n", data, data);
 }
 
