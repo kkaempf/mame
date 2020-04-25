@@ -34,11 +34,9 @@ WRITE8_MEMBER( eg3200_state::dk_37ec_w)
 {
     if ((data & 0xF8) == 0xF8) {
 	// switch fm/mfm
-	m_fdc->dden_w(~BIT(data, 0));
-//        logerror("0x37ec w %s-density\n", (BIT(data, 0))?"double":"single");
+	m_fdc->dden_w(BIT(data, 0)?0:1);
     }
     else {
-//        logerror("eg3200_state::cmd_w %02x\n", data);
         m_fdc->cmd_w(data);
     }
 }
