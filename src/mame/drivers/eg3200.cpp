@@ -175,7 +175,7 @@ void eg3200_state::eg3200_mem(address_map &map)
  * dk disk keyboard bank
  * bank 0: disk + keyboard
  * bank 1: ram
- * stride: 0x500 
+ * stride: 0x200 
  */
 void eg3200_state::eg3200_bank_dk(address_map &map)
 {
@@ -189,10 +189,11 @@ void eg3200_state::eg3200_bank_dk(address_map &map)
 	map(0x0ee, 0x0ee).rw(m_fdc, FUNC(fd1793_device::sector_r), FUNC(fd1793_device::sector_w));
 	map(0x0ef, 0x0ef).rw(m_fdc, FUNC(fd1793_device::data_r), FUNC(fd1793_device::data_w));
         map(0x0ff, 0x0ff).noprw();
-    /* 0x3801 - 0x38ff - keyboard */
+    /* 0x3800 - 0x38ff - read: keyboard */
 	map(0x100, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
+    /* 0x3800 - 0x38ff - write: nop */
 	map(0x100, 0x1ff).nopw();
-    /* bank 1 */
+    /* bank 1: 0x3700 - 0x38ff -> ram */
         map(0x200, 0x3ff).ram();
 }
 
@@ -301,7 +302,7 @@ static INPUT_PORTS_START( eg3200 )
 	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME("Lock") PORT_CODE(KEYCODE_NUMLOCK)
 	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_NAME("Pad ,") PORT_CODE(KEYCODE_COMMA_PAD)
 	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_NAME("Pad -") PORT_CODE(KEYCODE_MINUS_PAD)
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("Pad .") PORT_CODE(KEYCODE_COMMA_PAD)
+	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("Pad .") PORT_CODE(KEYCODE_DEL_PAD)
 	PORT_BIT(0x80, 0x00, IPT_UNUSED)
 INPUT_PORTS_END
 
@@ -383,7 +384,8 @@ ROM_START(eg3200)
 	ROM_SYSTEM_BIOS(0, "original", "EG3200 default rom")
 	ROMX_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267), ROM_BIOS(0))
 	ROM_SYSTEM_BIOS(1, "holte", "Holte CP/M rom")
-	ROMX_LOAD("eg3200_holte_system.z27",  0x0000, 0x1000, CRC(b01fefea) SHA1(b64b1147e52499f74b3b9ff038faec079677d293), ROM_BIOS(1))
+//	ROMX_LOAD("eg3200_holte_system.z27",  0x0000, 0x1000, CRC(b01fefea) SHA1(b64b1147e52499f74b3b9ff038faec079677d293), ROM_BIOS(1))
+	ROMX_LOAD("eg3200_holte_system.z27",  0x0000, 0x1000, CRC(5d20736f) SHA1(9f7e056b168b92adb71e1d2644a075bc46c403b9), ROM_BIOS(1))
 
         ROM_REGION(0x0800, "chargen",0)
 	ROMX_LOAD("eg3200_video.z23", 0x0000, 0x0800, CRC(74aeca3b) SHA1(60071dea1177202fa727dc12c828fe097f0c7952), ROM_BIOS(0))
