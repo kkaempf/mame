@@ -252,45 +252,44 @@ WRITE_LINE_MEMBER(eg3200_state::intrq_w)
  *************************************/
 READ8_MEMBER( eg3200_state::keyboard_r )
 {
-	u8 result = 0;
+	u8 i, result = 0;
 
-        switch (offset & 0xff) {
-        case 0x01:
-            result |= m_io_keyboard[0]->read();
-            break;
-        case 0x02:
-            result |= m_io_keyboard[1]->read();
-            break;
-        case 0x04:
-            result |= m_io_keyboard[2]->read();
-            break;
-        case 0x08:
-            result |= m_io_keyboard[3]->read();
-            break;
-        case 0x10:
-            result |= m_io_keyboard[4]->read();
-            break;
-        case 0x20:
-            result |= m_io_keyboard[5]->read();
-            break;
-        case 0x40:
-            result |= m_io_keyboard[6]->read();
-            break;
-        case 0x80:
-            result |= m_io_keyboard[7]->read();
-            break;
-        case 0xa0:
-            result |= m_io_keyboard[8]->read();
-            break;
-        case 0xc0:
-            result |= m_io_keyboard[9]->read();
-            break;
-        case 0xe0:
-            result |= m_io_keyboard[10]->read();
-            break;
-        default:
-            break;
+//        logerror("keyboard_r(38%02x)\n", offset);
+        if ((offset & 0x00e0) < 0x00a0) {
+    /* 0x3800 .. 0x389f -> check 8 addr lines */
+            for (i = 0; i < 8; i++) {
+                if (BIT(offset, i)) {
+                    result |= m_io_keyboard[i]->read();
+//            logerror("\tline%d -> %02x\n", i, result);
+                }
+            }
         }
+        else {
+    /* 0x38a0 .. 0x38ff -> check 5 addr lines */
+            for (i = 0; i < 5; i++) {
+                if (BIT(offset, i)) {
+                    result |= m_io_keyboard[i]->read();
+//            logerror("\tline%d -> %02x\n", i, result);
+                }
+            }
+            switch (offset & 0x00e0) {
+                /* 0x38a0, 0x38c0, 0x38e0 -> check separately */
+            case 0x00a0:
+                result |= m_io_keyboard[8]->read();
+                break;
+            case 0x00c0:
+                result |= m_io_keyboard[9]->read();
+                break;
+            case 0x00e0:
+                result |= m_io_keyboard[10]->read();
+                break;
+            default:
+                break;
+            }
+        }
+//    if (result != 0) {
+//        logerror("\t%02x\n", result);
+//    }
 	return result;
 }
 
@@ -317,7 +316,8 @@ void eg3200_state::machine_start()
 	membank("bank_video0")->configure_entry(1, &ram[0x3c00]);
 	membank("bank_video1")->configure_entry(0, m_mem_video1.get());
 	membank("bank_video1")->configure_entry(1, &ram[0x4000]);
- }
+}
+
 
 void eg3200_state::machine_reset()
 {
