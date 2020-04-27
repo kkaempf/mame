@@ -147,7 +147,8 @@ void eg3200_state::eg3200_io(address_map &map)
 {
 	map.global_mask(0xff);
         map(0x00, 0xf4).noprw();
-        map(0xf5, 0xf5).noprw(); /* video invert */
+        map(0xf5, 0xf5).w(FUNC(eg3200_state::video_invert));
+        map(0xf5, 0xf5).nopr();
 	map(0xf6, 0xf6).w(FUNC(eg3200_state::crtc_addr));
         map(0xf6, 0xf6).nopr();
 	map(0xf7, 0xf7).w(FUNC(eg3200_state::crtc_ctrl));
@@ -363,6 +364,8 @@ void eg3200_state::eg3200(machine_config &config)
 	// Internal drives
 	FLOPPY_CONNECTOR(config, "fdc:0", eg3200_floppies, "sssd", eg3200_state::floppy_formats).enable_sound(true);
 	FLOPPY_CONNECTOR(config, "fdc:1", eg3200_floppies, "sssd", eg3200_state::floppy_formats).enable_sound(true);
+	FLOPPY_CONNECTOR(config, "fdc:2", eg3200_floppies, "sssd", eg3200_state::floppy_formats).enable_sound(true);
+	FLOPPY_CONNECTOR(config, "fdc:3", eg3200_floppies, "sssd", eg3200_state::floppy_formats).enable_sound(true);
 
 	CENTRONICS(config, m_centronics, centronics_devices, "printer");
 	m_centronics->busy_handler().set(m_cent_status_in, FUNC(input_buffer_device::write_bit7));
@@ -392,11 +395,12 @@ ROM_START(eg3200)
 	ROMX_LOAD("eg3200_holte_video.z23",  0x0000, 0x0800, CRC(87206dda) SHA1(5cf03f516228cba1789a82241ab015b688a58d9a), ROM_BIOS(1))
 ROM_END
 
+
 ROM_START(genie3)
-	ROM_REGION(0x3000, "maincpu",0)
+	ROM_REGION(0x1000, "bios",0)
 	ROM_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267))
 
-	ROM_REGION(0x0800, "chargen",0)
+        ROM_REGION(0x0800, "chargen",0)
 	ROM_LOAD("eg3200_video.z23", 0x0000, 0x0800, CRC(74aeca3b) SHA1(60071dea1177202fa727dc12c828fe097f0c7952))
 ROM_END
 
@@ -406,5 +410,5 @@ void eg3200_state::init_eg3200()
 }
 
 //    YEAR  NAME         PARENT    COMPAT    MACHINE   INPUT     CLASS          INIT             COMPANY               FULLNAME                FLAGS
-COMP( 1982, eg3200,      0,        0,        eg3200,   eg3200,   eg3200_state,  init_eg3200,     "EACA Computers Ltd", "EG 3200",              MACHINE_NO_SOUND_HW )
+COMP( 1982, eg3200,      0,        0,        eg3200,   eg3200,   eg3200_state,  init_eg3200,     "EACA Computers Ltd", "EACA EG 3200",         MACHINE_NO_SOUND_HW )
 COMP( 1982, genie3,      eg3200,   0,        eg3200,   eg3200,   eg3200_state,  init_eg3200,     "TCS Computer GmbH",  "Video Genie III",      MACHINE_NO_SOUND_HW )
