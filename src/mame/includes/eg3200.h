@@ -55,6 +55,7 @@ private:
 	DECLARE_READ8_MEMBER(irq_status_r);
 	DECLARE_WRITE8_MEMBER(motor_w);
         DECLARE_WRITE8_MEMBER(dk_37ec_w);
+        DECLARE_WRITE8_MEMBER(video_invert);
 	DECLARE_READ8_MEMBER(keyboard_r);
 
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
@@ -68,6 +69,7 @@ private:
 	void eg3200_bank_dk(address_map &map);
 
 	uint8_t m_vidmode; /* video mode  0: 16x64, 1: 24x80, 2: 25x80 */
+        uint8_t m_vidinv; /* 0 - trs-80 block graphics, 1 - invers characters */
 	uint8_t m_irq;
 	uint8_t m_mask;
 	uint8_t m_nmi_mask;

@@ -43,7 +43,7 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
 		for (ra = 0; ra < 12; ra++)
 		{
 			uint16_t *p = &bitmap.pix16(sy++);
-                        /* charater column counter, 6 pixels per char, 6 * 64 = 384*/
+                        /* charater column counter, 6 pixels per char, 6 * 64 = 384, 6 * 80 = 480 */
 			for (x = ma; x < ma + cols; x++)
 			{
                                 if (x < 0x400)
@@ -51,8 +51,8 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
                                 else
 				        chr = m_mem_video1[x-0x400];
 
-				if (chr & 0x80) /* block 'graphics' */
-				{
+                                if ((chr & 0x80) && (m_vidinv = 0)) /* block 'graphics' */
+                                {
 					gfxbit = (ra & 0x0c)>>1;
 					/* Display one line of a lores character (6 pixels) */
 					*p++ = BIT(chr, gfxbit);
@@ -62,21 +62,23 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
 					*p++ = BIT(chr, gfxbit);
 					*p++ = BIT(chr, gfxbit);
 					*p++ = BIT(chr, gfxbit);
-				}
+                                }
 				else /* character */
 				{
+                                        uint8_t inverted = ((chr & 0x80) == 0x80)?0x01:0x00;
+                                        chr = chr & 0x7f;
                                         if (ra < 9)
                                                 gfx = m_p_chargen[(chr<<4) | ra];
 					else
-						gfx = 0;
+						gfx = inverted;
 
 					/* Display a scanline of a character (6 pixels) */
-					*p++ = BIT(gfx, 7);
-					*p++ = BIT(gfx, 6);
-					*p++ = BIT(gfx, 5);
-					*p++ = BIT(gfx, 4);
-					*p++ = BIT(gfx, 3);
-					*p++ = BIT(gfx, 2);
+					*p++ = BIT(gfx, 7) ^ inverted;
+					*p++ = BIT(gfx, 6) ^ inverted;
+					*p++ = BIT(gfx, 5) ^ inverted;
+					*p++ = BIT(gfx, 4) ^ inverted;
+					*p++ = BIT(gfx, 3) ^ inverted;
+					*p++ = BIT(gfx, 2) ^ inverted;
 				}
 			}
 		}

@@ -83,6 +83,16 @@ WRITE8_MEMBER( eg3200_state::port_bank_w )
 }
 
 /*
+ * F5: What does 'high bit 1' mean in the video ram ?
+ * 0 - trs-80 compatible 'block' graphics
+ * 1 - inverted character bits
+ */
+WRITE8_MEMBER( eg3200_state::video_invert )
+{
+    m_vidinv = data;
+}
+
+/*
  * F7: CRTC control
  * F6: CRTC address
  */
@@ -301,6 +311,7 @@ READ8_MEMBER( eg3200_state::keyboard_r )
 void eg3200_state::machine_start()
 {
 	m_vidmode = 0;
+        m_vidinv = 0;
 	m_reg_load = 1;
 	m_nmi_data = 0;
 	m_timeout = 1;
@@ -324,6 +335,7 @@ void eg3200_state::machine_reset()
 	m_size_store = 0xff;
         m_irq = 0;
         m_vidmode = 0;
+        m_vidinv = 0;
 
         /* rom, video0, and dskkbd */
         membank("bankr_rom")->set_entry(0);
