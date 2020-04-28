@@ -67,8 +67,8 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
 				{
                                         uint8_t inverted = ((chr & 0x80) == 0x80)?0x01:0x00;
                                         chr = chr & 0x7f;
-                                        if (ra < 9)
-                                                gfx = m_p_chargen[(chr<<4) | ra];
+                                        if (ra > 0 && ra < 10)
+                                                gfx = m_p_chargen[(chr<<4) | (ra-1)];
 					else
 						gfx = inverted;
 
