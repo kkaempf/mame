@@ -34,6 +34,8 @@ public:
 		, m_fdc(*this, "fdc")
 		, m_floppy0(*this, "fdc:0")
 		, m_floppy1(*this, "fdc:1")
+		, m_floppy2(*this, "fdc:2")
+		, m_floppy3(*this, "fdc:3")
 		, m_io_keyboard(*this, "LINE%u", 0)
         { }
 
@@ -57,9 +59,12 @@ private:
         DECLARE_WRITE8_MEMBER(dk_37ec_w);
         DECLARE_WRITE8_MEMBER(video_invert);
 	DECLARE_READ8_MEMBER(keyboard_r);
+	DECLARE_READ8_MEMBER(rtc_r);
+	DECLARE_WRITE8_MEMBER(rtc_w);
+	DECLARE_WRITE8_MEMBER(rtc_rdwr_w);
 
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
-	INTERRUPT_GEN_MEMBER(fdc_interrupt);
+
 	DECLARE_WRITE_LINE_MEMBER(intrq_w);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(quickload_cb);
 	uint32_t screen_update_eg3200(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -67,9 +72,14 @@ private:
 	void eg3200_io(address_map &map);
 	void eg3200_mem(address_map &map);
 	void eg3200_bank_dk(address_map &map);
-
+	void rtc_clock();
+        uint8_t m_int_counter;
 	uint8_t m_vidmode; /* video mode  0: 16x64, 1: 24x80, 2: 25x80 */
         uint8_t m_vidinv; /* 0 - trs-80 block graphics, 1 - invers characters */
+        uint8_t m_cursor_msb;
+        uint8_t m_cursor_lsb;
+        uint8_t m_rtc_mode; /* port 0xE1, read/write bits */
+        uint8_t m_rtc_reg; /* selected register in rtc_data_w */
 	uint8_t m_irq;
 	uint8_t m_mask;
 	uint8_t m_nmi_mask;
@@ -82,6 +92,8 @@ private:
 	uint16_t m_timeout;
 	std::unique_ptr<uint8_t[]> m_mem_video0;
 	std::unique_ptr<uint8_t[]> m_mem_video1;
+	std::unique_ptr<uint8_t[]> m_mem_romw;
+	std::unique_ptr<uint8_t[]> m_rtc_regs; // rtc registers
 	floppy_image_device *m_floppy;
 	required_device<cpu_device> m_maincpu;
 	required_device<ram_device> m_mainram;
@@ -93,6 +105,8 @@ private:
 	optional_device<fd1793_device> m_fdc;
 	optional_device<floppy_connector> m_floppy0;
 	optional_device<floppy_connector> m_floppy1;
+	optional_device<floppy_connector> m_floppy2;
+	optional_device<floppy_connector> m_floppy3;
 	required_ioport_array<11> m_io_keyboard;
 };
 
