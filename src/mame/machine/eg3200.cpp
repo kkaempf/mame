@@ -7,6 +7,182 @@
 
 #define IRQ_RTC      0x80    /* RTC interrupt */
 #define IRQ_FDC      0x40    /* FDC interrupt */
+#define RTC_REG_COUNT 13     /* R0 .. R12 */
+
+/* mode bits when writing to 0xE1 */
+#define RTC_READ_MODE 0x40
+#define RTC_WRITE_MODE 0x80
+
+/* E0: RTC addr/data
+ *          read   write
+ * - bit 0  D0     D0
+ * - bit 1  D1     D1
+ * - bit 2  D2     D2
+ * - bit 3  D3     D3
+ * - bit 4  -      A0
+ * - bit 5  -      A1
+ * - bit 6  -      A2
+ * - bit 7  -      A3
+ * 
+ * R0:  S1   0..9
+ * R1:  S10  0..5
+ * R2:  MI1  0..9
+ * R3:  MI10 0..5
+ * R4:  H1   0..9
+ * R5:  H10  0..1/2, D2 0:AM, 1:PM; D3 0: 12hr, 1: 24hr
+ * R6:  W    0..6
+ * R7:  D1   0..9
+ * R8:  D10  0..3, D2 0: Feb has 28 days, 1: Feb has 29 days
+ * R9:  MO1  0..9
+ * R10: MO10 0..1
+ * R11: Y1   0..9
+ * R12: Y10  0..9
+ */
+
+/* 1Hz interrupt to increase clock */
+
+void eg3200_state::rtc_clock()
+{
+//    logerror("%s\n", __func__);
+    if (++m_rtc_regs[0] < 10)
+        return;
+    m_rtc_regs[0] = 0;
+    if (++m_rtc_regs[1] < 6)
+        return;
+    m_rtc_regs[1] = 0;
+    /* overflow to minute */
+    if (++m_rtc_regs[2] < 10)
+        return;
+    m_rtc_regs[2] = 0;
+    if (++m_rtc_regs[3] < 6)
+        return;
+    m_rtc_regs[3] = 0;
+    /* overflow to hour */
+    uint8_t h1 = m_rtc_regs[4];
+    uint8_t val = m_rtc_regs[5];
+    uint8_t h10 = (val & 0x03);
+    uint8_t hour = h10 * 10 + h1 + 1;
+    if (BIT(val, 3)) { /* 24hrs */
+        if (hour < 24) {
+            m_rtc_regs[4] = (hour % 10);
+            m_rtc_regs[5] = (hour / 10) | (val & 0xc0);
+            return;
+        }
+        /* fallthru: overflow */
+    }
+    else { /* 12hrs */
+        if (hour < 13) {
+            m_rtc_regs[4] = (hour % 10);
+            m_rtc_regs[5] = (hour / 10) | (val & 0xc0);
+            return;
+        }
+        else {
+            val ^= 0x04; /* flip AM/PM */
+            if (BIT(val, 2)) { /* flipped to PM -> set hour to 1 */
+                m_rtc_regs[4] = 1;
+                m_rtc_regs[5] = val & 0xc0;
+                return;
+            }
+            /* fallthru: PM->AM overflow */
+        }
+    }
+    /* overflow to weekday */
+    if (++m_rtc_regs[6] > 6) {
+        m_rtc_regs[6] = 0;
+    }
+    /* overflow to day */
+    uint8_t m1 = m_rtc_regs[9];
+    uint8_t m10 = m_rtc_regs[10];
+    uint8_t month = m10 * 10 + m1;
+    uint8_t d1 = m_rtc_regs[7];
+    val = m_rtc_regs[8];
+    uint8_t d10 = (val & 0x03);
+    uint8_t day = d10 * 10 + d1 + 1;
+    uint8_t max_day = 0;
+    switch (month) {
+        case 0: /* Jan - 31 */
+        case 2: /* Mar */
+        case 4: /* May */
+        case 6: /* Jul */
+        case 7: /* Aug */
+        case 9: /* Okt */
+        case 11: /* Dec */
+            max_day = 31;
+            break;
+        case 1: /* Feb - 28/29 */
+            if (BIT(val, 2))
+                max_day = 29;
+            else
+                max_day = 28;
+            break;
+        case 3: /* Apr */
+        case 5: /* Jun */
+        case 8: /* Sep */
+        case 10: /* Nov */
+            max_day = 31;
+            break;
+        default:
+            break;
+    }
+    if (day <= max_day) {
+        m_rtc_regs[7] = day % 10;
+        m_rtc_regs[8] = (day / 10) | (val & 0x40);
+        return;
+    }
+    /* overflow to month */
+    if (max_day == 29) { /* Feb, leap year */
+        val = 0; /* reset leap flag */
+    }
+    /* set day to 1 */
+    m_rtc_regs[7] = 1;
+    m_rtc_regs[8] = (val & 0x40);
+    if (month++ < 13) {
+        m_rtc_regs[9] = month % 10;
+        m_rtc_regs[10] = month / 10;
+        return;
+    }
+    /* overflow to year */
+    if (++m_rtc_regs[11] < 10)
+        return;
+    m_rtc_regs[11] = 0;
+    if (++m_rtc_regs[12] < 10)
+        return;
+    m_rtc_regs[12] = 0;
+    return;
+}
+
+WRITE8_MEMBER( eg3200_state::rtc_w )
+{
+    m_rtc_reg = (data >> 4) & 0x0f; /* address in upper nibble */
+    logerror("%s reg[%d] <- %d\n", __func__, m_rtc_reg, data & 0x0f);
+    if (m_rtc_mode == RTC_WRITE_MODE) {
+        if (m_rtc_reg < RTC_REG_COUNT) {
+            m_rtc_regs[m_rtc_reg] = data & 0x0f;
+        }
+    }
+}
+
+READ8_MEMBER( eg3200_state::rtc_r )
+{
+    if (m_rtc_mode == RTC_READ_MODE) {
+        if (m_rtc_reg < RTC_REG_COUNT) {
+            return m_rtc_regs[m_rtc_reg];
+        }
+    }
+    return 0;
+}
+
+/* E1: RTC rdwr
+ * - bit 7: wr
+ * - bit 6: rd
+ * - bit 5..0: n/c
+ */
+
+WRITE8_MEMBER( eg3200_state::rtc_rdwr_w )
+{
+    logerror("%s %02x\n", __func__, data);
+    m_rtc_mode = data & (RTC_READ_MODE|RTC_WRITE_MODE);
+}
 
 /*
  * FD: printer port (output = data, input = status)
@@ -25,7 +201,8 @@ WRITE8_MEMBER( eg3200_state::printer_w )
 
 READ8_MEMBER( eg3200_state::printer_r )
 {
-	return m_cent_status_in->read();
+//	return m_cent_status_in->read();
+    return 0x30; // not busy, not out of paper, not select, high
 }
 
 
@@ -48,8 +225,8 @@ WRITE8_MEMBER( eg3200_state::motor_w )
 
 	if (BIT(data, 0)) m_floppy = m_floppy0->get_device();
 	if (BIT(data, 1)) m_floppy = m_floppy1->get_device();
-//	if (BIT(data, 2)) m_floppy = m_floppy2->get_device();
-//	if (BIT(data, 3)) m_floppy = m_floppy3->get_device();
+	if (BIT(data, 2)) m_floppy = m_floppy2->get_device();
+	if (BIT(data, 3)) m_floppy = m_floppy3->get_device();
 
 	m_fdc->set_floppy(m_floppy);
 
@@ -77,6 +254,7 @@ WRITE8_MEMBER( eg3200_state::port_bank_w )
 //    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
 
     membank("bankr_rom")->set_entry(BIT(data, 0));
+    membank("bankw_rom")->set_entry(BIT(data, 0));
     membank("bank_video0")->set_entry(BIT(data, 1));
     membank("bank_video1")->set_entry(BIT(data, 2));
     m_bank_dk->set_bank(BIT(data, 3));
@@ -108,6 +286,12 @@ WRITE8_MEMBER( eg3200_state::crtc_ctrl )
             m_vidmode = (data == 25) ? 2 : 1;
         else
             m_vidmode = 0;
+        break;
+    case 14: /* cursor lsb */
+        m_cursor_lsb = data;
+        break;
+    case 15: /* cursor msb */
+        m_cursor_msb = data;
         break;
     }
 //    logerror("crtc %02x / %u\n", data, data);
@@ -173,21 +357,6 @@ WRITE8_MEMBER( eg3200_state::port_f5_w )
  * E8: receiver buffer (read), transmit buffer (write)
  */
 
-/* RTC
- * E1: RTC write
- * - bit 6 : rd
- * - bit 7 : wr
- * 
- * E0: RTC addr/data
- * - bit 0: d0
- * - bit 1: d1
- * - bit 2: d2
- * - bit 3: d3
- * - bit 4: a0 (write only)
- * - bit 5: a1 (write only)
- * - bit 6: a2 (write only)
- * - bit 7: a3 (write only)
- */
 
 /* Read interrupt status
    0x37e0
@@ -201,6 +370,7 @@ WRITE8_MEMBER( eg3200_state::port_f5_w )
  */
 READ8_MEMBER( eg3200_state::irq_status_r )
 {
+//    logerror("%s\n", __func__);
 /* Whenever an interrupt occurs, 37E0 is read to see what devices require service.
     d7 = RTC
     d6 = FDC
@@ -223,7 +393,12 @@ READ8_MEMBER( eg3200_state::irq_status_r )
 
 INTERRUPT_GEN_MEMBER(eg3200_state::rtc_interrupt)
 {
+//    logerror("%s\n", __func__);
 	m_irq |= IRQ_RTC;
+    if (m_int_counter++ == 40) {
+        rtc_clock();
+        m_int_counter = 0;
+    }
 	m_maincpu->set_input_line(0, HOLD_LINE);
 /*
     static suseconds_t last_tv = 0;
@@ -297,9 +472,9 @@ READ8_MEMBER( eg3200_state::keyboard_r )
                 break;
             }
         }
-//    if (result != 0) {
+    if (result != 0) {
 //        logerror("\t%02x\n", result);
-//    }
+    }
 	return result;
 }
 
@@ -317,12 +492,15 @@ void eg3200_state::machine_start()
 	m_timeout = 1;
         m_mem_video0 = std::make_unique<uint8_t[]>(0x0400);
         m_mem_video1 = std::make_unique<uint8_t[]>(0x0400);
+        m_mem_romw = std::make_unique<uint8_t[]>(0x0800);
+        m_rtc_regs = std::make_unique<uint8_t[]>(RTC_REG_COUNT);
 	uint8_t *rom = memregion("bios")->base();
 	uint8_t *ram = m_mainram->pointer();
 
 	membank("bankr_rom")->configure_entry(0, &rom[0]);
 	membank("bankr_rom")->configure_entry(1, &ram[0]);
-	membank("bankw_rom")->configure_entry(0, &ram[0]);
+	membank("bankw_rom")->configure_entry(0, &m_mem_romw[0]); // write to a shadow-ram
+	membank("bankw_rom")->configure_entry(1, &ram[0]);
 	membank("bank_video0")->configure_entry(0, m_mem_video0.get());
 	membank("bank_video0")->configure_entry(1, &ram[0x3c00]);
 	membank("bank_video1")->configure_entry(0, m_mem_video1.get());
@@ -334,8 +512,24 @@ void eg3200_state::machine_reset()
 {
 	m_size_store = 0xff;
         m_irq = 0;
+        m_int_counter = 0;
         m_vidmode = 0;
         m_vidinv = 0;
+        m_rtc_mode = RTC_READ_MODE;
+        m_rtc_regs[0] = 6;
+        m_rtc_regs[1] = 5;
+        m_rtc_regs[2] = 4;
+        m_rtc_regs[3] = 3;
+        m_rtc_regs[4] = 2;
+        m_rtc_regs[5] = 1;
+        /* Tue, 29-Jun-86, 12:34:56 */
+        m_rtc_regs[6] = 1; /* 0: Mon */
+        m_rtc_regs[7] = 9;
+        m_rtc_regs[8] = 2;
+        m_rtc_regs[9] = 7;
+        m_rtc_regs[10] = 0;
+        m_rtc_regs[11] = 6;
+        m_rtc_regs[12] = 8;
 
         /* rom, video0, and dskkbd */
         membank("bankr_rom")->set_entry(0);

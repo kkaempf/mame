@@ -146,7 +146,11 @@ static void eg3200_floppies(device_slot_interface &device)
 void eg3200_state::eg3200_io(address_map &map)
 {
 	map.global_mask(0xff);
-        map(0x00, 0xf4).noprw();
+        map(0x00, 0xdf).noprw();
+        map(0xe0, 0xe0).rw(FUNC(eg3200_state::rtc_r), FUNC(eg3200_state::rtc_w));
+        map(0xe1, 0xe1).w(FUNC(eg3200_state::rtc_rdwr_w));
+        map(0xe1, 0xe1).nopr();
+        map(0xe2, 0xf4).noprw();
         map(0xf5, 0xf5).w(FUNC(eg3200_state::video_invert));
         map(0xf5, 0xf5).nopr();
 	map(0xf6, 0xf6).w(FUNC(eg3200_state::crtc_addr));
@@ -341,6 +345,7 @@ void eg3200_state::eg3200(machine_config &config)
 	Z80(config, m_maincpu, 4_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &eg3200_state::eg3200_mem);
 	m_maincpu->set_addrmap(AS_IO, &eg3200_state::eg3200_io);
+
 	m_maincpu->set_periodic_int(FUNC(eg3200_state::rtc_interrupt), attotime::from_hz(40)); /* 40Hz, 25 ms */
 
         RAM(config, RAM_TAG).set_default_size("64K");
