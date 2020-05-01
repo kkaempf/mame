@@ -178,13 +178,13 @@ READ8_MEMBER( eg3200_state::rtc_r )
 
 WRITE8_MEMBER( eg3200_state::rtc_rdwr_w )
 {
-    logerror("%s %02x\n", __func__, data);
+//    logerror("%s %02x\n", __func__, data);
     data &= (RTC_READ_MODE|RTC_WRITE_MODE);
     if (data == RTC_NO_MODE) {
         if (m_rtc_mode == RTC_WRITE_MODE) {
             /* high->low transition */
             if (m_rtc_addr < RTC_REG_COUNT) {
-                logerror("%s reg[%d] <- %d\n", __func__, m_rtc_addr, m_rtc_data);
+//                logerror("%s reg[%d] <- %d\n", __func__, m_rtc_addr, m_rtc_data);
                 m_rtc_regs[m_rtc_addr] = m_rtc_data & 0x0f;
             }
         }
@@ -397,6 +397,7 @@ READ8_MEMBER( eg3200_state::irq_status_r )
  *
  *************************************/
 
+#include <time.h>
 #include <sys/time.h>
 
 INTERRUPT_GEN_MEMBER(eg3200_state::rtc_interrupt)
@@ -518,27 +519,36 @@ void eg3200_state::machine_start()
 
 void eg3200_state::machine_reset()
 {
+    uint8_t wday;
+    struct tm *lt;
+    time_t t;
 	m_size_store = 0xff;
         m_irq = 0;
         m_int_counter = 0;
         m_vidmode = 0;
         m_vidinv = 0;
         m_rtc_mode = RTC_READ_MODE;
-        m_rtc_regs[0] = 6;
-        m_rtc_regs[1] = 5;
-        m_rtc_regs[2] = 4;
-        m_rtc_regs[3] = 3;
-        m_rtc_regs[4] = 2;
-        m_rtc_regs[5] = 1;
+    time(&t);
+    lt = localtime(&t);
+    if (lt) {
+        m_rtc_regs[0] = lt->tm_sec % 10;
+        m_rtc_regs[1] = lt->tm_sec / 10;
+        m_rtc_regs[2] = lt->tm_min % 10;
+        m_rtc_regs[3] = lt->tm_min / 10;
+        m_rtc_regs[4] = lt->tm_hour % 10;
+        m_rtc_regs[5] = lt->tm_hour / 10;
         /* Tue, 29-Jun-86, 12:34:56 */
-        m_rtc_regs[6] = 1; /* 0: Mon */
-        m_rtc_regs[7] = 9;
-        m_rtc_regs[8] = 2;
-        m_rtc_regs[9] = 7;
-        m_rtc_regs[10] = 0;
-        m_rtc_regs[11] = 6;
-        m_rtc_regs[12] = 8;
-
+        wday = lt->tm_wday; /* 0: sunday */
+        if (wday == 0)
+          wday = 7;
+        m_rtc_regs[6] = wday - 1; /* 0: Mon */
+        m_rtc_regs[7] = lt->tm_mday % 10;
+        m_rtc_regs[8] = lt->tm_mday / 10;
+        m_rtc_regs[9] = (lt->tm_mon + 1) % 10;
+        m_rtc_regs[10] = (lt->tm_mon + 1) / 10;
+        m_rtc_regs[11] = (lt->tm_year - 100) % 10;
+        m_rtc_regs[12] = (lt->tm_year - 100) / 10;
+    }
         /* rom, video0, and dskkbd */
         membank("bankr_rom")->set_entry(0);
         membank("bankw_rom")->set_entry(0);
