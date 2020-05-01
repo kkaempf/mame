@@ -10,6 +10,9 @@
 #define RTC_REG_COUNT 13     /* R0 .. R12 */
 
 /* mode bits when writing to 0xE1 */
+/* writing: set E1 to NO_MODE, write addr/data to E0, write WRITE_MODE, write NO_MODE */
+/* -> high-to-low transition of WRITE_MODE triggers the actual write */
+#define RTC_NO_MODE 0x00
 #define RTC_READ_MODE 0x40
 #define RTC_WRITE_MODE 0x80
 
@@ -153,20 +156,15 @@ void eg3200_state::rtc_clock()
 
 WRITE8_MEMBER( eg3200_state::rtc_w )
 {
-    m_rtc_reg = (data >> 4) & 0x0f; /* address in upper nibble */
-    logerror("%s reg[%d] <- %d\n", __func__, m_rtc_reg, data & 0x0f);
-    if (m_rtc_mode == RTC_WRITE_MODE) {
-        if (m_rtc_reg < RTC_REG_COUNT) {
-            m_rtc_regs[m_rtc_reg] = data & 0x0f;
-        }
-    }
+    m_rtc_addr = (data >> 4) & 0x0f; /* address in upper nibble */
+    m_rtc_data = data & 0x0f; /* data in lower nibble */
 }
 
 READ8_MEMBER( eg3200_state::rtc_r )
 {
     if (m_rtc_mode == RTC_READ_MODE) {
-        if (m_rtc_reg < RTC_REG_COUNT) {
-            return m_rtc_regs[m_rtc_reg];
+        if (m_rtc_addr < RTC_REG_COUNT) {
+            return m_rtc_regs[m_rtc_addr];
         }
     }
     return 0;
@@ -181,7 +179,17 @@ READ8_MEMBER( eg3200_state::rtc_r )
 WRITE8_MEMBER( eg3200_state::rtc_rdwr_w )
 {
     logerror("%s %02x\n", __func__, data);
-    m_rtc_mode = data & (RTC_READ_MODE|RTC_WRITE_MODE);
+    data &= (RTC_READ_MODE|RTC_WRITE_MODE);
+    if (data == RTC_NO_MODE) {
+        if (m_rtc_mode == RTC_WRITE_MODE) {
+            /* high->low transition */
+            if (m_rtc_addr < RTC_REG_COUNT) {
+                logerror("%s reg[%d] <- %d\n", __func__, m_rtc_addr, m_rtc_data);
+                m_rtc_regs[m_rtc_addr] = m_rtc_data & 0x0f;
+            }
+        }
+    }
+    m_rtc_mode = data;
 }
 
 /*

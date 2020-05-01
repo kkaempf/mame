@@ -79,7 +79,8 @@ private:
         uint8_t m_cursor_msb;
         uint8_t m_cursor_lsb;
         uint8_t m_rtc_mode; /* port 0xE1, read/write bits */
-        uint8_t m_rtc_reg; /* selected register in rtc_data_w */
+        uint8_t m_rtc_addr; /* addr written to 0xE0 */
+        uint8_t m_rtc_data; /* data written to 0xE0 */
 	uint8_t m_irq;
 	uint8_t m_mask;
 	uint8_t m_nmi_mask;
