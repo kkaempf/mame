@@ -23,7 +23,7 @@
 #define LOG_LIVE    (1U << 13) // Live states
 #define LOG_FUNC    (1U << 14) // Function calls
 
-#define VERBOSE (LOG_GENERAL )
+#define VERBOSE (LOG_GENERAL|LOG_COMMAND )
 //#define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
@@ -1058,7 +1058,7 @@ void wd_fdc_device_base::do_cmd_w()
 	cmd_buffer = -1;
 
 	LOGCOMMAND("%s %02x: %s\n", FUNCNAME, cmd_buffer, std::array<char const *, 16>
-		   {{"RESTORE", "SEEK", "STEP", "STEP", "STEP", "STEP", "STEP", "STEP",
+		   {{"RESTORE", "SEEK", "STEP", "STEP", "STEP In", "STEP In", "STEP Out", "STEP Out",
 			 "READ sector start", "READ sector start", "WRITE sector start", "WRITE sector start",
 			 "READ ID start",     "INTERRUPT start",   "READ track start",   "WRITE track start"}}[(command >> 4) & 0x0f]);
 	switch(command & 0xf0) {
@@ -1184,7 +1184,9 @@ uint8_t wd_fdc_device_base::status_r()
 
 	uint8_t val = status;
 	if (inverted_bus) val ^= 0xff;
-
+if (val & 0x1c) /* rnf, crc, lost dta */
+            logerror("status_r %02x\n", val);
+ 
 	return val;
 }
 
@@ -1201,6 +1203,7 @@ void wd_fdc_device_base::track_w(uint8_t val)
 	// No more than one write in flight
 	if(track_buffer != -1 || !mr)
 		return;
+logerror("%s %d\n", __func__, val);
 
 	track_buffer = val;
 	delay_cycles(t_track, dden ? delay_register_commit*2 : delay_register_commit);
@@ -1210,7 +1213,7 @@ uint8_t wd_fdc_device_base::track_r()
 {
 	uint8_t val = track;
 	if (inverted_bus) val ^= 0xff;
-
+logerror("%s %d\n", __func__, val);
 	return val;
 }
 
@@ -1233,6 +1236,7 @@ void wd_fdc_device_base::sector_w(uint8_t val)
 	//  return;
 
 	sector_buffer = val;
+logerror("%s %d\n", __func__, val);
 
 	// set a timer to write the new value to the register, but only if we aren't in
 	// the middle of an already occurring update
@@ -1244,6 +1248,7 @@ uint8_t wd_fdc_device_base::sector_r()
 {
 	uint8_t val = sector;
 	if (inverted_bus) val ^= 0xff;
+logerror("%s %d\n", __func__, val);
 
 	return val;
 }
