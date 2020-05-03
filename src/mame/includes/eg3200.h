@@ -57,6 +57,7 @@ private:
 	DECLARE_READ8_MEMBER(irq_status_r);
 	DECLARE_WRITE8_MEMBER(motor_w);
         DECLARE_WRITE8_MEMBER(dk_37ec_w);
+        DECLARE_WRITE8_MEMBER(dk_37ee_w);
         DECLARE_WRITE8_MEMBER(video_invert);
 	DECLARE_READ8_MEMBER(keyboard_r);
 	DECLARE_READ8_MEMBER(rtc_r);
@@ -73,10 +74,10 @@ private:
 	void eg3200_mem(address_map &map);
 	void eg3200_bank_dk(address_map &map);
 	void rtc_clock();
-        uint8_t m_int_counter;
+        uint8_t m_int_counter; /* count 40 25msec interrupts for 1Hz RTC */
 	uint8_t m_vidmode; /* video mode  0: 16x64, 1: 24x80, 2: 25x80 */
         uint8_t m_vidinv; /* 0 - trs-80 block graphics, 1 - invers characters */
-        uint8_t m_cursor_msb;
+        uint8_t m_cursor_msb; /* cursor position */
         uint8_t m_cursor_lsb;
         uint8_t m_rtc_mode; /* port 0xE1, read/write bits */
         uint8_t m_rtc_addr; /* addr written to 0xE0 */
@@ -84,7 +85,7 @@ private:
 	uint8_t m_irq;
 	uint8_t m_mask;
 	uint8_t m_nmi_mask;
-	uint8_t m_port_ec;
+	uint8_t m_motor; /* last value written to 0x37e1 */
 	bool m_reg_load;
 	uint8_t m_nmi_data;
 	uint16_t m_start_address;

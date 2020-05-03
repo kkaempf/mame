@@ -226,6 +226,18 @@ WRITE8_MEMBER( eg3200_state::dk_37ec_w)
     }
 }
 
+/* set size, set sector */
+WRITE8_MEMBER( eg3200_state::dk_37ee_w)
+{
+    if ((data & 0x80) == 0x80) {
+	// switch 5.25" / 8"
+	return; // nop - must switch 1793 clock freq
+    }
+    else {
+        m_fdc->sector_w(data);
+    }
+}
+
 WRITE8_MEMBER( eg3200_state::motor_w )
 {
 //    logerror("eg3200_state::motor_w %02x\n", data);
@@ -240,11 +252,14 @@ WRITE8_MEMBER( eg3200_state::motor_w )
 
 	if (m_floppy)
 	{
-//            logerror("\tmotor_w %02x\n", data);
+            if (data != m_motor) {
+                logerror("\tmotor_w %02x (%s)\n", data & 0x0f, (data & 0x10)?"back":"front");
+            }
 		m_floppy->mon_w(0);
 		m_floppy->ss_w(BIT(data, 4)); /* side select */
 		m_timeout = 200;
 	}
+    m_motor = data;
 }
 
 /*
@@ -536,7 +551,7 @@ void eg3200_state::machine_reset()
         m_rtc_regs[2] = lt->tm_min % 10;
         m_rtc_regs[3] = lt->tm_min / 10;
         m_rtc_regs[4] = lt->tm_hour % 10;
-        m_rtc_regs[5] = lt->tm_hour / 10;
+        m_rtc_regs[5] = (lt->tm_hour / 10) | 0x08; /* 24hr format */
         /* Tue, 29-Jun-86, 12:34:56 */
         wday = lt->tm_wday; /* 0: sunday */
         if (wday == 0)
