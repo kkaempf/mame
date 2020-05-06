@@ -357,7 +357,20 @@ void eg3200_state::eg3200(machine_config &config)
 
 	/* video hardware */
 	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
-	screen.set_raw(12.672_MHz_XTAL, 800, 0, 666, 264, 0, 240); // FIXME: these are Model 4 80-column parameters
+        /* pixel clock   11.45664 (45.8304 / 4 = 11.4576 MHz)
+         * total pixel clocks per line incl. blanking, 612 (18.720 kHz per line)
+         * index of first pixed after horiz blank, 0
+         * Index of first pixel in horzontal blanking period after visible pixels. 480
+         * Total lines per frame, including vertical blanking period. 264   312 (60 Hz per screen)
+         * Index of first visible line after vertical blanking period ends. 0
+         * Index of first line in vertical blanking period after visible lines. 300
+         * 
+         * max 80 x 25, 6 x 12 chars = 480 pixels per line, 300 lines per screen
+         * 
+         *         screen_device &set_raw(u32 pixclock, u16 htotal, u16 hbend, u16 hbstart, u16 vtotal, u16 vbend, u16 vbstart)
+         * 
+         */
+	screen.set_raw(45.8304_MHz_XTAL/4, 612, 0, 480, 312, 0, 300);
 	screen.set_screen_update(FUNC(eg3200_state::screen_update_eg3200));
 	screen.set_palette("palette");
 
