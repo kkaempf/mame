@@ -34396,12 +34396,13 @@ sonstwar                        //
 sonstwr2                        //
 wolfman                         //
 
+@source:pg631.cpp
+pg631                           // Siemens PG631
+
 @source:pg685.cpp
 pg675                           //
 pg685                           //
 pg685oua12                      //
-
-
 
 @source:pgm.cpp
 ddp2                            // (c) 2001 DoDonPachi 2 - Bee Storm
