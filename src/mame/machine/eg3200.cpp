@@ -523,7 +523,8 @@ void eg3200_state::machine_start()
 
 	membank("bankr_rom")->configure_entry(0, &rom[0]);
 	membank("bankr_rom")->configure_entry(1, &ram[0]);
-	membank("bankw_rom")->configure_entry(0, &m_mem_romw[0]); // write to a shadow-ram
+//	membank("bankw_rom")->configure_entry(0, &m_mem_romw[0]); // write to a shadow-ram
+	membank("bankw_rom")->configure_entry(0, &ram[0]);
 	membank("bankw_rom")->configure_entry(1, &ram[0]);
 	membank("bank_video0")->configure_entry(0, m_mem_video0.get());
 	membank("bank_video0")->configure_entry(1, &ram[0x3c00]);
