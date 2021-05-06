@@ -1,5 +1,5 @@
 // license:BSD-3-Clause
-// copyright-holders:rfka01, K. Loy
+// copyright-holders:rfka01, K. Loy, kkaempf
 /***************************************************************************
 
     Siemens PG 631 SKELETON
@@ -33,6 +33,8 @@
 	6800...6FFF  2716  CRT_13.BIN
 	7000...77FF  2716  CRT_14.BIN
 	7800...7FFF  2716  CRT_30.BIN
+ 
+        C000...DFFF  RAM (optional)
  
 	E000...E3FF  2114 1KRAM, U28/U23 (CPU board)
 	E400...E7FF  2114 1KRAM, U25/U20 (CPU board)
@@ -79,6 +81,8 @@
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8155.h"
+#include "screen.h"
+#include "emupal.h"
 
 class pg631_state : public driver_device
 {
@@ -88,11 +92,12 @@ public:
 		, m_maincpu(*this, "maincpu")
 		, m_rom(*this, "maincpu")
 		// , m_ramio(*this, "ramio")
+                , m_video(*this, "video")
 		// , m_terminal(*this, "terminal")
 		{ }
 
 	void pg631(machine_config &config);
-
+        uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 private:
 	
 	void io_map(address_map &map);
@@ -103,8 +108,26 @@ private:
 	required_device<cpu_device> m_maincpu;
 	required_region_ptr<u8> m_rom;
 	// required_device<i8155_device> m_ramio;
-	
+	optional_shared_ptr<u8> m_video;
 };
+
+static const gfx_layout pg631_charlayout =
+{
+        8, 11,      /* 8 x 11 characters */
+        256,        /* 256 characters */
+        1,          /* 1 bits per pixel */
+        { 0 },      /* no bitplanes */
+        /* x offsets */
+        { 0, 1, 2, 3, 4, 5, 6, 7 },
+        /* y offsets */
+        {  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8 },
+        8*11        /* every char takes 11 bytes */
+};
+
+static GFXDECODE_START(gfx_pg631)
+        GFXDECODE_ENTRY( "crt", 0, pg631_charlayout, 0, 1 )
+GFXDECODE_END
+
 
 void pg631_state::mem_map(address_map &map)
 {
@@ -122,6 +145,12 @@ void pg631_state::io_map(address_map &map)
 	map.unmap_value_high();
 	// map(0xf9, 0xf9).rw(m_ramio, FUNC(i8155_device::io_r), FUNC(i8155_device::io_w));
 }
+
+uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+{
+    return 0;
+}
+
 
 /* Input ports */
 static INPUT_PORTS_START( pg631 )
@@ -302,6 +331,13 @@ void pg631_state::pg631(machine_config &config)
 
 	// I8155(config, m_ramio, 6.144_MHz_XTAL / 2); // Basic RAM (A16)
 	// m_ramio->out_to_callback().set_inputline(m_maincpu, I8085_TRAP_LINE);
+
+    screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+    screen.set_raw(45.8304_MHz_XTAL/4, 800, 0, 666, 320, 0, 300);
+    GFXDECODE(config, "gfxdecode", "palette", gfx_pg631);
+    screen.set_screen_update(FUNC(pg631_state::screen_update));
+    screen.set_palette("palette");
+    PALETTE(config, "palette", palette_device::MONOCHROME);
 }
 
 /* ROM definition */
