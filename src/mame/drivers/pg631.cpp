@@ -4,6 +4,10 @@
 
     Siemens PG 631 SKELETON
 	
+	The PG 631 is a programming device for the Siemens S5 series of programmable logic controllers.
+	Later devices in this series are the PG 675 and PG 685 which include floppy or hard disk drives running
+	DOS or PCP/M-86
+	
 	Dual oscillator 4.915MHz and 2.457MHz, this one feeds the 8085's CLK input (Pin 2)
 	
 	PG631 Memory Map V0.2
@@ -74,6 +78,7 @@
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
+#include "machine/i8155.h"
 
 class pg631_state : public driver_device
 {
@@ -82,6 +87,7 @@ public:
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
 		, m_rom(*this, "maincpu")
+		// , m_ramio(*this, "ramio")
 		// , m_terminal(*this, "terminal")
 		{ }
 
@@ -96,6 +102,7 @@ private:
 	void machine_start() override;
 	required_device<cpu_device> m_maincpu;
 	required_region_ptr<u8> m_rom;
+	// required_device<i8155_device> m_ramio;
 	
 };
 
@@ -103,24 +110,183 @@ void pg631_state::mem_map(address_map &map)
 {
 	map.unmap_value_high();
 	map(0x0000, 0x7fff).rom().region("maincpu", 0);
-	// map(0xd100, 0xd103).rw(m_pit, FUNC(pit8253_device::read), FUNC(pit8253_device::write));
 	map(0xe000, 0xe7ff).ram(); // RAM on CPU board
 	map(0xe800, 0xefff).ram(); // RAM on video board
-	
+	map(0xf000, 0xf7ff).ram(); // video RAM
+	map(0xf800, 0xf8ff).ram(); // 256 bytes RAM
+	// map(0xf900, 0xf903).mirror(0xf9).rw(m_ramio, FUNC(i8155_device::memory_r), FUNC(i8155_device::memory_w));
 }
 
 void pg631_state::io_map(address_map &map)
 {
 	map.unmap_value_high();
+	// map(0xf9, 0xf9).rw(m_ramio, FUNC(i8155_device::io_r), FUNC(i8155_device::io_w));
 }
 
 /* Input ports */
 static INPUT_PORTS_START( pg631 )
+
+/* The  PG 631 has no regular alphanumerical keyboard, just the programming keys in its front plate.
+
+      [  |  ]    [  ^  ]  [ (X) ]     [  x| ]  [ |   ]     [     ]
+      [  /  ]    [  | /]  [  |  ]     [     ]  [ |-->]     [     ]
+      [  |  ]    [ <-- ]  [  v_ ]     [ ->| ]  [ | | ]     [     ]
+Key   1/1        2/1      3/1         4/1      5/1         6/1
+
+
+      [ |   ]    [  U  ]  [  N  ]     [     ]  [     ]     [     ]  [     ]  [     ]
+      [ |-> ]    [     ]  [     ]     [  P  ]  [  E  ]     [  7  ]  [  8  ]  [  9  ]
+      [ |   ]    [ -][-]  [-]|[-]     [     ]  [     ]     [     ]  [     ]  [     ]
+Key   1/2        2/2      3/2         4/2      5/2         6/2      7/2      8/2
+
+      [ =<-|]    [  O. ]  [  O  ]     [     ]  [     ]     [     ]  [     ]  [     ]
+      [-   -]    [\   /]  [   | ]     [  B  ]  [  A  ]     [  4  ]  [  5  ]  [  6  ]
+      [|->= ]    [ ]-[ ]  [ <-- ]     [     ]  [     ]     [     ]  [     ]  [     ]
+Key   1/3        2/3      3/3         4/3      5/3         6/3      7/3      8/3
+
+      [  ^  ]    [  U( ]  [  )  ]     [  BE ]  [     ]     [     ]  [     ]  [     ]
+      [ |=| ]    [--|--]  [--|--]     [     ]  [  M  ]     [  1  ]  [  2  ]  [  3  ]
+      [  v  ]    [ -|  ]  [  |- ]     [ BEB ]  [     ]     [     ]  [     ]  [     ]
+Key   1/4        2/4      3/4         4/4      5/4         6/4      7/4      8/4
+
+      [  -1 ]    [  =  ]  [     ]     [  SV ]  [     ]     [     ]  [     ]  [     ]
+      [     ]    [     ]  [  S  ]     [     ]  [  T  ]     [  0  ]  [  .  ]  [     ]
+      [  +1 ]    [ -()-]  [     ]     [  SI ]  [     ]     [     ]  [     ]  [     ]
+Key   1/5        2/5      3/5         4/5      5/5         6/5      7/5      8/5
+
+      [     ]    [  T  ]  [     ]     [ *** ]  [     ]     [   / ]  [ / \ ]  [     ]
+      [SHIFT]    [     ]  [  R  ]     [     ]  [  Z  ]     [ /// ]  [  |  ]  [SHIFT]
+      [     ]    [  L  ]  [     ]     [  ZR ]  [     ]     [ /   ]  [ \ / ]  [     ]
+Key   1/6        2/6      3/6         4/6      5/6         6/6      7/6      8/6
+
+Key no.   Key colour   German                              English
+
+Function keys: 
+1/1       orange       Aufruf der Grundmaske			   Access start mask
+                       Funktionsanwah1                     select function
+					   Abbruch der laufenden Funktion      interrupt currently running function
+
+1/2       orange       Suchlauf                            scan
+
+7/6       red          Übernahmetaste                      Enter key
+
+6/6       orange       Löschen des Eingabefeldes           clear input field
+
+5/1       red          Signalzustandsanzeige               signal status indicator
+
+2/1       orange       Eingabe oder Korrektur              finish entry or correction and switch to output
+					   abschließen und umschalten
+					   auf Ausgabe
+					   Shift: Korrektur einleiten          Shift: begin correction
+					   
+3/1       brown        Einfügen einer Anweisung            insert command
+                       Shift: Löschen einer Anweisung      Shift: delete command
+
+4/1       orange       Eingabe einleiten oder Einfügen     start input or start inserting a network
+					   eines Netzwerkes einleiten
+					   Shift: Löschen eines Netzwerkes     Shift: delete a network
+					   
+Positioning keys: 
+1/3       yellow       Anwahl Programmende                 select end of program 
+                       Shift: Anwahl Programmanfang        Shift: select beginning of program
+
+1/4       yellow       Anwahl nächstes Netzwerk            select next network 
+                       Shift: Anwahl vorhergehendes        Shift: select previous network
+					   Netzwerk
+
+1/5       yellow       Anwahl nächste Anweisung            select next command
+                       Shift: Anwahl vorhergehende         Shift: select previous command
+					   Anweisung
+
+Keys for entering a program: 
+AWL mode: Anweisungsliste = command list - KOP mode: Kontaktplan = ladder diagram
+
+2/2       grey         AWL: Verknüpfung nach UND           AND link
+                       KOP: Reihenschaltung eines          connect a contact in series
+					        Kontaktes
+							
+2/3       grey         AWL: Verknüpfung nach ODER          OR link
+                       KOP: einzelner Parallelkontakt      single parallel contact
+					   
+3/2       grey         AWL: Abfrage auf "Null"             check for zero
+                       KOP: Kennzeichnung von Öffnern      mark normally open switches
+
+3/3       grey         AWL: ODER-Verknüpfung von UND-      OR link of AND functions
+                            Funktionen
+					   KOP: Rückführung zum Beginn der     return to the beginning of a parallel branch
+                            Parallelverzweigung
+							
+2/4       grey         AWL: UND-Verknüpfung von Klammer-   AND link of bracketed expressions
+                            ausdrücken
+					   KOP: Beginn einer Parallel-         beginning of a parallel branch
+					        verzweigung
+							
+3/4       grey         AWL: Klammer zu                     close bracket
+                       KOP: Abschluss einer Parallel-      end of a parallel branch
+					        verzweigung
+							
+2/5       grey         AWL: Zuweisung                      allocation
+                       KOP: Relais/Schütz                  relay/connector
+					   
+3/5       grey         AWL: Setzen                         set
+                       KOP: Relais/Schütz speichernd       switch on and save relay/connector
+					        einschalten
+							
+3/6       grey	       AWL: Rücksetzen                     reset
+                       KOP: Relais/Schütz speichernd       switch off and save relay/connector
+					        ausschalten
+							
+2/6       grey         Laden                               load
+                       Shift: Transferieren                Shift: tranfer
+					   
+4/5       grey         Starten einer Zeit als Impuls       starting a timer as an impulse
+                       Shift: Starten einer Zeit als       Shift: starting a timer as a prolongued impulse
+					   verlängerter Impuls
+					   
+4/6		  grey         Zählen rückwärts                    count backwards
+                       Shift: Segmentende                  Shift: end of segment
+
+4/4       grey         Bausteinende bedingt                conditional end of block
+                       Shift: Bausteinende absolut         Shift: absolute end of block
+					   
+5/2       light grey   Operandenkennzeichen für Eingang    operand marker for input
+
+5/3       light grey   Operandenkennzeichen für Ausgang    operand marker for output
+
+5/4       light grey   Operandenkennzeichen für Merker     operand marker for reminder
+
+5/5       light grey   Operandenkennzeichen für Zeit       operand marker for timer
+
+5/6       light grey   Operandenkennzeichen für Zähler     operand marker for counter
+
+4/2       light grey   Operandenkennzeichen für            operand marker for peripheral
+                       Peripherie
+
+4/5       light grey   Operandenkennzeichen für Byte       operand marker for byte (only
+                       (nur in Verbindung mit P, A         in connection with P, A or M
+					   oder M)
+					   Shift: NOP eingeben                 Shift: enter NOP
+					   
+Digit keys:
+Die Ziffern-Tasten werden zur Vorgabe der Parameter und der Adressen sowie zur Anwahl der Funktionen über Masken verwendet.					   
+The digit keys are used to enter parameters and addresses, as well as selecting functions in forms.
+
+
+
+					   
+Blank keys: 
+6/1       brown
+8/6       brown
+
+
+       
+*/
+
 INPUT_PORTS_END
 
 void pg631_state::machine_reset()
 {
-
+		// m_ramio->reset();
 }
 
 void pg631_state::machine_start()
@@ -130,11 +296,12 @@ void pg631_state::machine_start()
 void pg631_state::pg631(machine_config &config)
 {
 	/* basic machine hardware */
-	I8085A(config, m_maincpu, XTAL(2'000'000));
+	I8085A(config, m_maincpu, XTAL(2'457'600));
 	m_maincpu->set_addrmap(AS_PROGRAM, &pg631_state::mem_map);
 	m_maincpu->set_addrmap(AS_IO, &pg631_state::io_map);
 
-
+	// I8155(config, m_ramio, 6.144_MHz_XTAL / 2); // Basic RAM (A16)
+	// m_ramio->out_to_callback().set_inputline(m_maincpu, I8085_TRAP_LINE);
 }
 
 /* ROM definition */
@@ -166,4 +333,4 @@ ROM_END
 /* Driver */
 
 //    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  CLASS        INIT        COMPANY    FULLNAME  FLAGS
-COMP( 198?, pg631, 0,      0,      pg631,   pg631, pg631_state, empty_init, "Siemens", "PG631",  MACHINE_IS_SKELETON )
+COMP( 198?, pg631, 0,      0,      pg631,   pg631, pg631_state, empty_init, "Siemens", "Programmiergerät PG 631",  MACHINE_IS_SKELETON )
