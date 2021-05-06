@@ -93,7 +93,7 @@ public:
 		, m_rom(*this, "maincpu")
 		// , m_ramio(*this, "ramio")
                 , m_video(*this, "video")
-		// , m_terminal(*this, "terminal")
+		, m_chargen(*this, "chargen")
 		{ }
 
 	void pg631(machine_config &config);
@@ -109,23 +109,24 @@ private:
 	required_region_ptr<u8> m_rom;
 	// required_device<i8155_device> m_ramio;
 	optional_shared_ptr<u8> m_video;
+        required_region_ptr<u8> m_chargen;
 };
 
 static const gfx_layout pg631_charlayout =
 {
         8, 11,      /* 8 x 11 characters */
-        256,        /* 256 characters */
+        128,        /* 128 characters */
         1,          /* 1 bits per pixel */
         { 0 },      /* no bitplanes */
         /* x offsets */
         { 0, 1, 2, 3, 4, 5, 6, 7 },
         /* y offsets */
         {  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8 },
-        8*11        /* every char takes 11 bytes */
+        8*16        /* every char takes 16 bytes in chargen rom */
 };
 
 static GFXDECODE_START(gfx_pg631)
-        GFXDECODE_ENTRY( "crt", 0, pg631_charlayout, 0, 1 )
+        GFXDECODE_ENTRY( "chargen", 0, pg631_charlayout, 0, 1 )
 GFXDECODE_END
 
 
@@ -148,7 +149,35 @@ void pg631_state::io_map(address_map &map)
 
 uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-    return 0;
+	uint8_t y,ra,chr,gfx;
+	uint16_t sy=0,ma=0,x;
+
+        /* line counter */
+	for (y = 0; y < 24; y++)
+        {
+                for (ra = 0; ra < 11; ra++) /* raster line */
+		{
+			uint16_t *p = &bitmap.pix(sy++);
+
+			for (x = ma; x < ma + 80; x++) /* memory address */
+			{
+				chr = m_video[x];
+
+                                gfx = m_chargen[(chr<<4) | (ra-1)];
+
+                                /* Display a scanline of a character (8 pixels) */
+				*p++ = BIT(gfx, 7);
+				*p++ = BIT(gfx, 6);
+				*p++ = BIT(gfx, 5);
+				*p++ = BIT(gfx, 4);
+				*p++ = BIT(gfx, 3);
+				*p++ = BIT(gfx, 2);
+				*p++ = BIT(gfx, 1);
+			}
+		}
+		ma += 80;
+	}
+	return 0;
 }
 
 
@@ -335,6 +364,7 @@ void pg631_state::pg631(machine_config &config)
     screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
     screen.set_raw(45.8304_MHz_XTAL/4, 800, 0, 666, 320, 0, 300);
     GFXDECODE(config, "gfxdecode", "palette", gfx_pg631);
+    screen.set_visible_area(0, 80*8-1, 0, 24*11-1); /* charater 8 x 11 */
     screen.set_screen_update(FUNC(pg631_state::screen_update));
     screen.set_palette("palette");
     PALETTE(config, "palette", palette_device::MONOCHROME);
@@ -360,7 +390,7 @@ ROM_START( pg631 )
 	ROM_LOAD( "crt_14.bin",   0x7000, 0x0800, CRC(2af3390e) SHA1(936e72e485356192697af977fad901bf9d2d71e6) )
 	ROM_LOAD( "crt_30.bin",   0x7800, 0x0800, CRC(123ac690) SHA1(9059c4c7aa541dc01426c8f16706b14bede2e295) )
 	
-	ROM_REGION (0x800, "crt", 0 )
+	ROM_REGION (0x800, "chargen", 0 )
 	ROM_LOAD( "chargen.bin",  0x0000, 0x0800, CRC(5cbf0e9f) SHA1(030ed2a5c15cecacfa992cd73fe886de9c8d8412) )
 	
 
