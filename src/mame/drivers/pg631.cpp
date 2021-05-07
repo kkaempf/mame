@@ -136,7 +136,7 @@ void pg631_state::mem_map(address_map &map)
 	map(0x0000, 0x7fff).rom().region("maincpu", 0);
 	map(0xe000, 0xe7ff).ram(); // RAM on CPU board
 	map(0xe800, 0xefff).ram(); // RAM on video board
-	map(0xf000, 0xf7ff).ram(); // video RAM
+        map(0xf000, 0xf7ff).ram().share(m_video); // 2k Video RAM
 	map(0xf800, 0xf8ff).ram(); // 256 bytes RAM
 	// map(0xf900, 0xf903).mirror(0xf9).rw(m_ramio, FUNC(i8155_device::memory_r), FUNC(i8155_device::memory_w));
 }
@@ -149,9 +149,13 @@ void pg631_state::io_map(address_map &map)
 
 uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+    static int visible_set = 0;
 	uint8_t y,ra,chr,gfx;
 	uint16_t sy=0,ma=0,x;
-
+    if (visible_set == 0) {
+        screen.set_visible_area(0, 80*8-1, 0, 24*11-1); /* charater 8 x 11 */
+        visible_set = 1;
+    }
         /* line counter */
 	for (y = 0; y < 24; y++)
         {
@@ -159,7 +163,7 @@ uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 		{
 			uint16_t *p = &bitmap.pix(sy++);
 
-			for (x = ma; x < ma + 80; x++) /* memory address */
+			for (x = ma; x < ma + 80; x++) /* memory address, iterate per line */
 			{
 				chr = m_video[x];
 
@@ -362,9 +366,21 @@ void pg631_state::pg631(machine_config &config)
 	// m_ramio->out_to_callback().set_inputline(m_maincpu, I8085_TRAP_LINE);
 
     screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
+    /* pixel clock   11.45664 (45.8304 / 4 = 11.4576 MHz)
+     * total pixel clocks per line incl. blanking, 612 (18.720 kHz per line)
+     * index of first pixed after horiz blank, 0
+     * Index of first pixel in horzontal blanking period after visible pixels. 480
+     * Total lines per frame, including vertical blanking period. 264   312 (60 Hz per screen)
+     * Index of first visible line after vertical blanking period ends. 0
+     * Index of first line in vertical blanking period after visible lines. 300
+     *
+     * max 80 x 25, 6 x 12 chars = 480 pixels per line, 300 lines per screen
+     *
+     *         screen_device &set_raw(u32 pixclock, u16 htotal, u16 hbend, u16 hbstart, u16 vtotal, u16 vbend, u16 vbstart)
+     *
+     */
     screen.set_raw(45.8304_MHz_XTAL/4, 800, 0, 666, 320, 0, 300);
     GFXDECODE(config, "gfxdecode", "palette", gfx_pg631);
-    screen.set_visible_area(0, 80*8-1, 0, 24*11-1); /* charater 8 x 11 */
     screen.set_screen_update(FUNC(pg631_state::screen_update));
     screen.set_palette("palette");
     PALETTE(config, "palette", palette_device::MONOCHROME);
