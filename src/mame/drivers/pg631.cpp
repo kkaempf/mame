@@ -165,18 +165,21 @@ uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 
 			for (x = ma; x < ma + 80; x++) /* memory address, iterate per line */
 			{
+                            uint8_t inverted;
 				chr = m_video[x];
-
-                                gfx = m_chargen[(chr<<4) | (ra-1)];
+                            inverted = ((chr & 0x80) == 0x80)?0x00:0x01;
+                                gfx = m_chargen[((chr & 0x7f)<<4) | ra]; /* 16 bytes per char in chargen rom */
 
                                 /* Display a scanline of a character (8 pixels) */
-				*p++ = BIT(gfx, 7);
-				*p++ = BIT(gfx, 6);
-				*p++ = BIT(gfx, 5);
-				*p++ = BIT(gfx, 4);
-				*p++ = BIT(gfx, 3);
-				*p++ = BIT(gfx, 2);
-				*p++ = BIT(gfx, 1);
+
+				*p++ = BIT(gfx, 7) ^ inverted;
+				*p++ = BIT(gfx, 6) ^ inverted;
+				*p++ = BIT(gfx, 5) ^ inverted;
+				*p++ = BIT(gfx, 4) ^ inverted;
+				*p++ = BIT(gfx, 3) ^ inverted;
+				*p++ = BIT(gfx, 2) ^ inverted;
+				*p++ = BIT(gfx, 1) ^ inverted;
+				*p++ = BIT(gfx, 0) ^ inverted;
 			}
 		}
 		ma += 80;
