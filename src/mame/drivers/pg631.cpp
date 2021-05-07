@@ -81,6 +81,7 @@
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8155.h"
+#include "machine/i8279.h"
 #include "screen.h"
 #include "emupal.h"
 
@@ -94,6 +95,7 @@ public:
 		// , m_ramio(*this, "ramio")
                 , m_video(*this, "video")
 		, m_chargen(*this, "chargen")
+                , m_keyboard(*this, "X%u", 0U)
 		{ }
 
 	void pg631(machine_config &config);
@@ -110,6 +112,11 @@ private:
 	// required_device<i8155_device> m_ramio;
 	optional_shared_ptr<u8> m_video;
         required_region_ptr<u8> m_chargen;
+
+	required_ioport_array<6> m_keyboard;
+	void scanlines_w(u8 data);
+	u8 kbd_r();
+	u8 m_digit;
 };
 
 static const gfx_layout pg631_charlayout =
@@ -139,12 +146,12 @@ void pg631_state::mem_map(address_map &map)
         map(0xf000, 0xf7ff).ram().share(m_video); // 2k Video RAM
 	map(0xf800, 0xf8ff).ram(); // 256 bytes RAM
 	// map(0xf900, 0xf903).mirror(0xf9).rw(m_ramio, FUNC(i8155_device::memory_r), FUNC(i8155_device::memory_w));
+	map(0xfe02, 0xfe03).rw("i8279", FUNC(i8279_device::read), FUNC(i8279_device::write));
 }
 
 void pg631_state::io_map(address_map &map)
 {
 	map.unmap_value_high();
-	// map(0xf9, 0xf9).rw(m_ramio, FUNC(i8155_device::io_r), FUNC(i8155_device::io_w));
 }
 
 uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
@@ -187,6 +194,21 @@ uint32_t pg631_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 	return 0;
 }
 
+
+void pg631_state::scanlines_w(u8 data)
+{
+	m_digit = data & 7;
+}
+
+u8 pg631_state::kbd_r()
+{
+	uint8_t data = 0xff;
+
+	if ((m_digit & 7) < 6)
+		data = m_keyboard[m_digit & 3]->read();
+
+	return data;
+}
 
 /* Input ports */
 static INPUT_PORTS_START( pg631 )
@@ -345,7 +367,73 @@ Blank keys:
 
 
        
-*/
+-*/
+
+
+/* X0: Brk     Enter CmdIns  NetIns SigState  ? */
+	PORT_START("X0")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Break") PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(ESC))
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Enter") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(UCHAR_MAMEKEY(ENTER))
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Cmd Ins") PORT_CODE(KEYCODE_INSERT) PORT_CHAR(UCHAR_MAMEKEY(INSERT))
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Net Ins") PORT_CODE(KEYCODE_N) PORT_CHAR('N')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Sig State") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("N/A") PORT_CODE(KEYCODE_W) PORT_CHAR('W')
+	PORT_BIT(0xC0, IP_ACTIVE_LOW, IPT_UNUSED)
+
+/* X1: Srch    U     N       P      E         7   8   9 */
+	PORT_START("X1")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Search") PORT_CODE(KEYCODE_B) PORT_CHAR('S')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("U") PORT_CODE(KEYCODE_U) PORT_CHAR('U')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N) PORT_CHAR('N')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("P") PORT_CODE(KEYCODE_P) PORT_CHAR('P')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E) PORT_CHAR('P')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7) PORT_CHAR('7')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8) PORT_CHAR('8')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9) PORT_CHAR('9')
+
+/* X2: GtoEnd  Or    OrAnd   B      A         4   5   6 */
+	PORT_START("X2")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Goto End") PORT_CODE(KEYCODE_G) PORT_CHAR('G')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Or") PORT_CODE(KEYCODE_O) PORT_CHAR('O')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Or And") PORT_CHAR('#')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B) PORT_CHAR('B')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A) PORT_CHAR('A')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4") PORT_CODE(KEYCODE_4) PORT_CHAR('4')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5") PORT_CODE(KEYCODE_5) PORT_CHAR('5')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6) PORT_CHAR('6')
+
+/* X3: ?       (     )       BEB/BE M         1   2   3 */
+	PORT_START("X3")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("?") PORT_CHAR('?')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(") PORT_CHAR('(')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(")") PORT_CHAR(')')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("BEB BE") PORT_CODE(KEYCODE_0) PORT_CHAR('0')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M) PORT_CHAR('M')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1) PORT_CHAR('1')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2) PORT_CHAR('2')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3) PORT_CHAR('3')
+
+/* X4: +/-     <>/=  S       SV/SI  T         0   .   ? */
+	PORT_START("X4")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("+/-") PORT_CODE(KEYCODE_PLUS_PAD) PORT_CHAR('+')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("<>/=") PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('=')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S) PORT_CHAR('S')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SI/SV") PORT_CODE(KEYCODE_I) PORT_CHAR('I')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T") PORT_CODE(KEYCODE_T) PORT_CHAR('T')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0) PORT_CHAR('0')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_STOP) PORT_CHAR('.')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNUSED)
+
+/* X5: LShft   T/L   R       ZR / *   Z         Opz Del RShift */
+	PORT_START("X5")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Left Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T/L") PORT_CODE(KEYCODE_T) PORT_CHAR('T')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R) PORT_CHAR('R')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ZR/*") PORT_CODE(KEYCODE_ASTERISK) PORT_CHAR('*')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Op Cntr") PORT_CODE(KEYCODE_C) PORT_CHAR('C')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Del") PORT_CODE(KEYCODE_DEL) PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Right Shift") PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_2)
 
 INPUT_PORTS_END
 
@@ -387,6 +475,12 @@ void pg631_state::pg631(machine_config &config)
     screen.set_screen_update(FUNC(pg631_state::screen_update));
     screen.set_palette("palette");
     PALETTE(config, "palette", palette_device::MONOCHROME);
+
+	i8279_device &kbdc(I8279(config, "i8279", 4.9152_MHz_XTAL / 2)); // based on divider
+	kbdc.out_sl_callback().set(FUNC(pg631_state::scanlines_w));    // scan SL lines
+	kbdc.in_rl_callback().set(FUNC(pg631_state::kbd_r));           // kbd RL lines
+	kbdc.in_shift_callback().set_constant(1);                       // Shift key
+	kbdc.in_ctrl_callback().set_constant(1);
 }
 
 /* ROM definition */
