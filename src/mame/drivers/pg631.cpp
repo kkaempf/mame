@@ -141,6 +141,7 @@ void pg631_state::mem_map(address_map &map)
 {
 	map.unmap_value_high();
 	map(0x0000, 0x7fff).rom().region("maincpu", 0);
+	map(0xc000, 0xdfff).ram(); // RAM extension
 	map(0xe000, 0xe7ff).ram(); // RAM on CPU board
 	map(0xe800, 0xefff).ram(); // RAM on video board
         map(0xf000, 0xf7ff).ram().share(m_video); // 2k Video RAM
