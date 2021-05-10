@@ -42,7 +42,7 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
         {       /* scanline counter, 16 * 12 = 192 */
 		for (ra = 0; ra < 12; ra++)
 		{
-			uint16_t *p = &bitmap.pix16(sy++);
+			uint16_t *p = &bitmap.pix(sy++);
                         /* charater column counter, 6 pixels per char, 6 * 64 = 384, 6 * 80 = 480 */
 			for (x = ma; x < ma + cols; x++)
 			{

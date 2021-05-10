@@ -133,7 +133,6 @@ E0: RTC addr/data
 
 #include "formats/hxchfe_dsk.h"
 #include "formats/imd_dsk.h"
-#include "formats/dmk_dsk.h"
 #include "formats/trs80_dsk.h"
 #include "formats/dmk_dsk.h"
 
@@ -335,12 +334,14 @@ static GFXDECODE_START(gfx_eg3200)
 GFXDECODE_END
 
 
-FLOPPY_FORMATS_MEMBER( eg3200_state::floppy_formats )
-	FLOPPY_HFE_FORMAT,
-	FLOPPY_IMD_FORMAT,
-	FLOPPY_TRS80_FORMAT,
-	FLOPPY_DMK_FORMAT
-FLOPPY_FORMATS_END
+void eg3200_state::floppy_formats(format_registration &fr)
+{
+	fr.add(FLOPPY_HFE_FORMAT);
+	fr.add(FLOPPY_IMD_FORMAT);
+	fr.add(FLOPPY_JV1_FORMAT);
+	fr.add(FLOPPY_JV3_FORMAT);
+	fr.add(FLOPPY_DMK_FORMAT);
+}
 
 void eg3200_state::eg3200(machine_config &config)
 {

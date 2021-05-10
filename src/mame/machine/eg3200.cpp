@@ -154,13 +154,13 @@ void eg3200_state::rtc_clock()
     return;
 }
 
-WRITE8_MEMBER( eg3200_state::rtc_w )
+void eg3200_state::rtc_w(uint8_t data)
 {
     m_rtc_addr = (data >> 4) & 0x0f; /* address in upper nibble */
     m_rtc_data = data & 0x0f; /* data in lower nibble */
 }
 
-READ8_MEMBER( eg3200_state::rtc_r )
+uint8_t eg3200_state::rtc_r()
 {
     if (m_rtc_mode == RTC_READ_MODE) {
         if (m_rtc_addr < RTC_REG_COUNT) {
@@ -176,7 +176,7 @@ READ8_MEMBER( eg3200_state::rtc_r )
  * - bit 5..0: n/c
  */
 
-WRITE8_MEMBER( eg3200_state::rtc_rdwr_w )
+void eg3200_state::rtc_rdwr_w(uint8_t data)
 {
 //    logerror("%s %02x\n", __func__, data);
     data &= (RTC_READ_MODE|RTC_WRITE_MODE);
@@ -200,14 +200,14 @@ WRITE8_MEMBER( eg3200_state::rtc_rdwr_w )
  * - bit 4 : held high 
  */
 
-WRITE8_MEMBER( eg3200_state::printer_w )
+void eg3200_state::printer_w(uint8_t data)
 {
 	m_cent_data_out->write(data);
 	m_centronics->write_strobe(0);
 	m_centronics->write_strobe(1);
 }
 
-READ8_MEMBER( eg3200_state::printer_r )
+uint8_t eg3200_state::printer_r()
 {
 //	return m_cent_status_in->read();
     return 0x30; // not busy, not out of paper, not select, high
@@ -215,7 +215,7 @@ READ8_MEMBER( eg3200_state::printer_r )
 
 
 /* set density, write cmd */
-WRITE8_MEMBER( eg3200_state::dk_37ec_w)
+void eg3200_state::dk_37ec_w(uint8_t data)
 {
     if ((data & 0xF8) == 0xF8) {
 	// switch fm/mfm
@@ -227,7 +227,7 @@ WRITE8_MEMBER( eg3200_state::dk_37ec_w)
 }
 
 /* set size, set sector */
-WRITE8_MEMBER( eg3200_state::dk_37ee_w)
+void eg3200_state::dk_37ee_w(uint8_t data)
 {
     if ((data & 0x80) == 0x80) {
 	// switch 5.25" / 8"
@@ -238,7 +238,7 @@ WRITE8_MEMBER( eg3200_state::dk_37ee_w)
     }
 }
 
-WRITE8_MEMBER( eg3200_state::motor_w )
+void eg3200_state::motor_w(uint8_t data)
 {
 //    logerror("eg3200_state::motor_w %02x\n", data);
 	m_floppy = nullptr;
@@ -271,7 +271,7 @@ WRITE8_MEMBER( eg3200_state::motor_w )
  * - bit 3 : bank 4 - Disk 0x37e0 - 0x37ef + Keyboard 0x3800 - 0x3bff
  */
 
-WRITE8_MEMBER( eg3200_state::port_bank_w )
+void eg3200_state::port_bank_w(uint8_t data)
 {
     /* swap in ram */
 //    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
@@ -288,7 +288,7 @@ WRITE8_MEMBER( eg3200_state::port_bank_w )
  * 0 - trs-80 compatible 'block' graphics
  * 1 - inverted character bits
  */
-WRITE8_MEMBER( eg3200_state::video_invert )
+void eg3200_state::video_invert(uint8_t data)
 {
     m_vidinv = data;
 }
@@ -298,7 +298,7 @@ WRITE8_MEMBER( eg3200_state::video_invert )
  * F6: CRTC address
  */
 
-WRITE8_MEMBER( eg3200_state::crtc_ctrl )
+void eg3200_state::crtc_ctrl(uint8_t data)
 {
     switch (m_crtc_reg) {
     case 1: /* horiz displayed */
@@ -320,7 +320,7 @@ WRITE8_MEMBER( eg3200_state::crtc_ctrl )
 //    logerror("crtc %02x / %u\n", data, data);
 }
 
-WRITE8_MEMBER( eg3200_state::crtc_addr )
+void eg3200_state::crtc_addr(uint8_t data)
 {
     /*
     const char *regs[] = {
@@ -391,7 +391,7 @@ WRITE8_MEMBER( eg3200_state::port_f5_w )
      bit 6: interrupt (read)
      bit 7: rtc (read, 25ms)
  */
-READ8_MEMBER( eg3200_state::irq_status_r )
+uint8_t eg3200_state::irq_status_r()
 {
 //    logerror("%s\n", __func__);
 /* Whenever an interrupt occurs, 37E0 is read to see what devices require service.
@@ -459,7 +459,7 @@ WRITE_LINE_MEMBER(eg3200_state::intrq_w)
 /*************************************
  *      Keyboard                     *
  *************************************/
-READ8_MEMBER( eg3200_state::keyboard_r )
+uint8_t eg3200_state::keyboard_r(offs_t offset)
 {
 	u8 i, result = 0;
 

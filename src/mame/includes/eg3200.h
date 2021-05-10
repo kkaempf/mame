@@ -48,21 +48,21 @@ protected:
 	virtual void machine_reset() override;
 
 private:
-	DECLARE_FLOPPY_FORMATS(floppy_formats);
-	DECLARE_READ8_MEMBER(printer_r);
-	DECLARE_WRITE8_MEMBER(printer_w);
-	DECLARE_WRITE8_MEMBER(port_bank_w);
-	DECLARE_WRITE8_MEMBER(crtc_addr);
-	DECLARE_WRITE8_MEMBER(crtc_ctrl);
-	DECLARE_READ8_MEMBER(irq_status_r);
-	DECLARE_WRITE8_MEMBER(motor_w);
-        DECLARE_WRITE8_MEMBER(dk_37ec_w);
-        DECLARE_WRITE8_MEMBER(dk_37ee_w);
-        DECLARE_WRITE8_MEMBER(video_invert);
-	DECLARE_READ8_MEMBER(keyboard_r);
-	DECLARE_READ8_MEMBER(rtc_r);
-	DECLARE_WRITE8_MEMBER(rtc_w);
-	DECLARE_WRITE8_MEMBER(rtc_rdwr_w);
+	static void floppy_formats(format_registration &fr);
+	uint8_t printer_r();
+	void printer_w(uint8_t data);
+	void port_bank_w(uint8_t data);
+	void crtc_addr(uint8_t data);
+	void crtc_ctrl(uint8_t data);
+	uint8_t irq_status_r();
+	void motor_w(uint8_t data);
+	void dk_37ec_w(uint8_t data);
+	void dk_37ee_w(uint8_t data);
+	void video_invert(uint8_t data);
+	uint8_t keyboard_r(offs_t offset);
+	uint8_t rtc_r();
+	void rtc_w(uint8_t data);
+	void rtc_rdwr_w(uint8_t data);
 
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
 
