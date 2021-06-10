@@ -94,7 +94,6 @@ private:
 	uint16_t m_timeout;
 	std::unique_ptr<uint8_t[]> m_mem_video0;
 	std::unique_ptr<uint8_t[]> m_mem_video1;
-	std::unique_ptr<uint8_t[]> m_mem_romw;
 	std::unique_ptr<uint8_t[]> m_rtc_regs; // rtc registers
 	floppy_image_device *m_floppy;
 	required_device<cpu_device> m_maincpu;

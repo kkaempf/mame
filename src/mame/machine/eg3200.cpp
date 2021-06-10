@@ -252,9 +252,9 @@ void eg3200_state::motor_w(uint8_t data)
 
 	if (m_floppy)
 	{
-            if (data != m_motor) {
-                logerror("\tmotor_w %02x (%s)\n", data & 0x0f, (data & 0x10)?"back":"front");
-            }
+//            if (data != m_motor) {
+//                logerror("\tmotor_w %02x (%s)\n", data & 0x0f, (data & 0x10)?"back":"front");
+//            }
 		m_floppy->mon_w(0);
 		m_floppy->ss_w(BIT(data, 4)); /* side select */
 		m_timeout = 200;
@@ -269,12 +269,14 @@ void eg3200_state::motor_w(uint8_t data)
  * - bit 1 : bank 2 - 16x64 Video 0x3c00 - 0x3fff
  * - bit 2 : bank 3 - 80x25 Video 0x4000 - 0x43ff (+ 0x4400 - 0x47ff optinal)
  * - bit 3 : bank 4 - Disk 0x37e0 - 0x37ef + Keyboard 0x3800 - 0x3bff
+ * ...
+ * - bit 7 : reset (not implemented)
  */
 
 void eg3200_state::port_bank_w(uint8_t data)
 {
     /* swap in ram */
-//    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
+    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
 
     membank("bankr_rom")->set_entry(BIT(data, 0));
     membank("bankw_rom")->set_entry(BIT(data, 0));
@@ -463,7 +465,6 @@ uint8_t eg3200_state::keyboard_r(offs_t offset)
 {
 	u8 i, result = 0;
 
-//        logerror("keyboard_r(38%02x)\n", offset);
         if ((offset & 0x00e0) < 0x00a0) {
     /* 0x3800 .. 0x389f -> check 8 addr lines */
             for (i = 0; i < 8; i++) {
@@ -497,7 +498,7 @@ uint8_t eg3200_state::keyboard_r(offs_t offset)
             }
         }
     if (result != 0) {
-//        logerror("\t%02x\n", result);
+        logerror("keyboard_r(38%02x) => %02x\n", offset, result);
     }
 	return result;
 }
@@ -516,14 +517,12 @@ void eg3200_state::machine_start()
 	m_timeout = 1;
         m_mem_video0 = std::make_unique<uint8_t[]>(0x0400);
         m_mem_video1 = std::make_unique<uint8_t[]>(0x0400);
-        m_mem_romw = std::make_unique<uint8_t[]>(0x0800);
         m_rtc_regs = std::make_unique<uint8_t[]>(RTC_REG_COUNT);
 	uint8_t *rom = memregion("bios")->base();
 	uint8_t *ram = m_mainram->pointer();
 
 	membank("bankr_rom")->configure_entry(0, &rom[0]);
 	membank("bankr_rom")->configure_entry(1, &ram[0]);
-//	membank("bankw_rom")->configure_entry(0, &m_mem_romw[0]); // write to a shadow-ram
 	membank("bankw_rom")->configure_entry(0, &ram[0]);
 	membank("bankw_rom")->configure_entry(1, &ram[0]);
 	membank("bank_video0")->configure_entry(0, m_mem_video0.get());
