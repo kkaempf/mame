@@ -167,7 +167,6 @@ void eg3200_state::eg3200_io(address_map &map)
 
 void eg3200_state::eg3200_mem(address_map &map)
 {
-    logerror("eg3200_state::eg3200_mem\n");
 	map(0x0000, 0x0fff).bankr("bankr_rom").bankw("bankw_rom");
 	map(0x1000, 0x37df).ram();
 	map(0x37e0, 0x37ef).m(m_bank_fdc, FUNC(address_map_bank_device::amap8));
@@ -187,7 +186,6 @@ void eg3200_state::eg3200_mem(address_map &map)
  */
 void eg3200_state::eg3200_bank_fdc(address_map &map)
 {
-    logerror("eg3200_state::eg3200_bank_fdc\n");
     /* mapped to 0x37e0 */
 	map(0x00, 0x03).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::motor_w));
         map(0x04, 0x0b).noprw();

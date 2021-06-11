@@ -240,7 +240,7 @@ void eg3200_state::dk_37ee_w(uint8_t data)
 
 void eg3200_state::motor_w(uint8_t data)
 {
-    logerror("eg3200_state::motor_w %02x\n", data);
+//    logerror("eg3200_state::motor_w %02x\n", data);
 	m_floppy = nullptr;
 
 	if (BIT(data, 0)) m_floppy = m_floppy0->get_device();
@@ -276,7 +276,7 @@ void eg3200_state::motor_w(uint8_t data)
 void eg3200_state::port_bank_w(uint8_t data)
 {
     /* swap in ram */
-    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
+//    logerror("port_bank_w(%02x) rom %d, video0 %d, video1 %d, dk %d\n", data, BIT(data, 0), BIT(data, 1), BIT(data, 2), BIT(data, 3));
 
     membank("bankr_rom")->set_entry(BIT(data, 0));
     membank("bankw_rom")->set_entry(BIT(data, 0));
@@ -498,9 +498,11 @@ uint8_t eg3200_state::keyboard_r(offs_t offset)
                 break;
             }
         }
+#if 0
     if (result != 0) {
         logerror("keyboard_r(38%02x) => %02x\n", offset, result);
     }
+#endif
 	return result;
 }
 
