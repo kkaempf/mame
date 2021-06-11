@@ -51,7 +51,7 @@ uint32_t eg3200_state::screen_update_eg3200(screen_device &screen, bitmap_ind16 
                                 else
 				        chr = m_mem_video1[x-0x400];
 
-                                if ((chr & 0x80) && (m_vidinv = 0)) /* block 'graphics' */
+                                if ((chr & 0x80) && (m_vidinv == 0)) /* block 'graphics' */
                                 {
 					gfxbit = (ra & 0x0c)>>1;
 					/* Display one line of a lores character (6 pixels) */
