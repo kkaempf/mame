@@ -240,7 +240,7 @@ void eg3200_state::dk_37ee_w(uint8_t data)
 
 void eg3200_state::motor_w(uint8_t data)
 {
-//    logerror("eg3200_state::motor_w %02x\n", data);
+    logerror("eg3200_state::motor_w %02x\n", data);
 	m_floppy = nullptr;
 
 	if (BIT(data, 0)) m_floppy = m_floppy0->get_device();
@@ -265,7 +265,7 @@ void eg3200_state::motor_w(uint8_t data)
 /*
  * FA: memory bank switching, inverted (bit set to 0 => bank enabled)
  * bank 0 - 64k memory
- * - bit 0 : bank 1 - ROM 0x0000 - 0x2fff
+ * - bit 0 : bank 1 - ROM 0x0000 - 0x0fff
  * - bit 1 : bank 2 - 16x64 Video 0x3c00 - 0x3fff
  * - bit 2 : bank 3 - 80x25 Video 0x4000 - 0x43ff (+ 0x4400 - 0x47ff optinal)
  * - bit 3 : bank 4 - Disk 0x37e0 - 0x37ef + Keyboard 0x3800 - 0x3bff
@@ -282,7 +282,8 @@ void eg3200_state::port_bank_w(uint8_t data)
     membank("bankw_rom")->set_entry(BIT(data, 0));
     membank("bank_video0")->set_entry(BIT(data, 1));
     membank("bank_video1")->set_entry(BIT(data, 2));
-    m_bank_dk->set_bank(BIT(data, 3));
+    m_bank_fdc->set_bank(BIT(data, 3));
+    m_bank_keyboard->set_bank(BIT(data, 3));
 }
 
 /*
@@ -569,7 +570,8 @@ void eg3200_state::machine_reset()
         membank("bankw_rom")->set_entry(0);
         membank("bank_video0")->set_entry(0);
         membank("bank_video1")->set_entry(1);
-        m_bank_dk->set_bank(0);
+        m_bank_fdc->set_bank(0);
+        m_bank_keyboard->set_bank(0);
 }
 
 

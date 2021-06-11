@@ -39,14 +39,15 @@ Banked memory (switched via port 0xFA)
    video memory 2 (programmable character generator)
  - Bank 4  0x37eX disk, 0x3800 - 0x3bff keyboard
    keyboard and disk control
-   0x37e0
+   0x37e0..3: read
+     bit 6: interrupt (read)
+     bit 7: rtc (read, 25ms)
+   0x37e0..3: write
      bit 0: drive 0
      bit 1: drive 1
      bit 2: drive 2
      bit 3: drive 3
      bit 4: side select (0 = front, 1 = back)
-     bit 6: interrupt (read)
-     bit 7: rtc (read, 25ms)
    0x37ec
      fdc status / command
      bit 0: density select (1 = DD/1791, 0 = SD/1771)
@@ -166,9 +167,12 @@ void eg3200_state::eg3200_io(address_map &map)
 
 void eg3200_state::eg3200_mem(address_map &map)
 {
+    logerror("eg3200_state::eg3200_mem\n");
 	map(0x0000, 0x0fff).bankr("bankr_rom").bankw("bankw_rom");
-	map(0x1000, 0x36ff).ram();
-	map(0x3700, 0x38ff).m(m_bank_dk, FUNC(address_map_bank_device::amap8));
+	map(0x1000, 0x37df).ram();
+	map(0x37e0, 0x37ef).m(m_bank_fdc, FUNC(address_map_bank_device::amap8));
+	map(0x37f0, 0x37ff).ram();
+	map(0x3800, 0x38ff).m(m_bank_keyboard, FUNC(address_map_bank_device::amap8));
 	map(0x3900, 0x3bff).ram();
 	map(0x3c00, 0x3fff).bankrw("bank_video0");
 	map(0x4000, 0x43ff).bankrw("bank_video1");
@@ -176,30 +180,42 @@ void eg3200_state::eg3200_mem(address_map &map)
 }
 
 /*
- * dk disk keyboard bank
- * bank 0: disk + keyboard
+ * fdc - floppy disk controller
+ * bank 0: disk
  * bank 1: ram
- * stride: 0x200 
+ * stride: 0x10 
  */
-void eg3200_state::eg3200_bank_dk(address_map &map)
+void eg3200_state::eg3200_bank_fdc(address_map &map)
 {
-    /* mapped to 0x3700 */
-        map(0x000, 0x0df).noprw();
-	map(0x0e0, 0x0e3).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::motor_w));
-        map(0x0e4, 0x0eb).noprw();
-	map(0x0ec, 0x0ec).r(m_fdc, FUNC(fd1793_device::status_r));
-	map(0x0ec, 0x0ec).w(FUNC(eg3200_state::dk_37ec_w)); //w(m_fdc, FUNC(fd1793_device::cmd_w));
-	map(0x0ed, 0x0ed).rw(m_fdc, FUNC(fd1793_device::track_r), FUNC(fd1793_device::track_w));
-        map(0x0ee, 0x0ee).r(m_fdc, FUNC(fd1793_device::sector_r));
-        map(0x0ee, 0x0ee).w(FUNC(eg3200_state::dk_37ee_w));
-	map(0x0ef, 0x0ef).rw(m_fdc, FUNC(fd1793_device::data_r), FUNC(fd1793_device::data_w));
-        map(0x0ff, 0x0ff).noprw();
+    logerror("eg3200_state::eg3200_bank_fdc\n");
+    /* mapped to 0x37e0 */
+	map(0x00, 0x03).rw(FUNC(eg3200_state::irq_status_r), FUNC(eg3200_state::motor_w));
+        map(0x04, 0x0b).noprw();
+	map(0x0c, 0x0c).r(m_fdc, FUNC(fd1793_device::status_r));
+	map(0x0c, 0x0c).w(FUNC(eg3200_state::dk_37ec_w));
+	map(0x0d, 0x0d).rw(m_fdc, FUNC(fd1793_device::track_r), FUNC(fd1793_device::track_w));
+        map(0x0e, 0x0e).r(m_fdc, FUNC(fd1793_device::sector_r));
+        map(0x0e, 0x0e).w(FUNC(eg3200_state::dk_37ee_w));
+	map(0x0f, 0x0f).rw(m_fdc, FUNC(fd1793_device::data_r), FUNC(fd1793_device::data_w));
+    /* bank 1: 0x37e0 - 0x37ef -> ram */
+        map(0x10, 0x1f).ram();
+}
+
+/*
+ * keyboard bank
+ * bank 0: keyboard
+ * bank 1: ram
+ * stride: 0x100 
+ */
+void eg3200_state::eg3200_bank_keyboard(address_map &map)
+{
+    /* mapped to 0x3800 */
     /* 0x3800 - 0x38ff - read: keyboard */
-	map(0x100, 0x1ff).r(FUNC(eg3200_state::keyboard_r));
+	map(0x000, 0x0ff).r(FUNC(eg3200_state::keyboard_r));
     /* 0x3800 - 0x38ff - write: nop */
-	map(0x100, 0x1ff).nopw();
-    /* bank 1: 0x3700 - 0x38ff -> ram */
-        map(0x200, 0x3ff).ram();
+	map(0x000, 0x0ff).nopw();
+    /* bank 1: 0x3800 - 0x38ff -> ram */
+        map(0x100, 0x1ff).ram();
 }
 
 static INPUT_PORTS_START( eg3200 )
@@ -354,7 +370,8 @@ void eg3200_state::eg3200(machine_config &config)
 
         RAM(config, RAM_TAG).set_default_size("64K");
 
-	ADDRESS_MAP_BANK(config, "bank_dk").set_map(&eg3200_state::eg3200_bank_dk).set_options(ENDIANNESS_LITTLE, 8, 11, 0x200); /* 0x000 - 0x3ff -> 11 bits */
+	ADDRESS_MAP_BANK(config, "bank_fdc").set_map(&eg3200_state::eg3200_bank_fdc).set_options(ENDIANNESS_LITTLE, 8, 5, 0x10); /* 0x000 - 0x0f -> 4 bits */
+	ADDRESS_MAP_BANK(config, "bank_keyboard").set_map(&eg3200_state::eg3200_bank_keyboard).set_options(ENDIANNESS_LITTLE, 8, 9, 0x100); /* 0x00 - 0xff -> 8 bits */
 
 	/* video hardware */
 	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
@@ -421,7 +438,7 @@ ROM_END
 
 
 ROM_START(genie3)
-	ROM_REGION(0x1000, "bios",0)
+	ROM_REGION(0x0800, "bios",0)
 	ROM_LOAD("eg3200_system.z27",  0x0000, 0x0800, CRC(ef4fbd20) SHA1(5a6ad3e0a80b8c5eee7b235f6ecaba07bfca8267))
 
         ROM_REGION(0x0800, "chargen",0)

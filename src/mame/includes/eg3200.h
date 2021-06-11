@@ -27,7 +27,8 @@ public:
 		, m_maincpu(*this, "maincpu")
 		, m_mainram(*this, RAM_TAG)
 		, m_p_chargen(*this, "chargen")
-		, m_bank_dk(*this, "bank_dk")
+		, m_bank_fdc(*this, "bank_fdc")
+		, m_bank_keyboard(*this, "bank_keyboard")
 		, m_centronics(*this, "centronics")
 		, m_cent_data_out(*this, "cent_data_out")
 		, m_cent_status_in(*this, "cent_status_in")
@@ -72,7 +73,8 @@ private:
 
 	void eg3200_io(address_map &map);
 	void eg3200_mem(address_map &map);
-	void eg3200_bank_dk(address_map &map);
+	void eg3200_bank_fdc(address_map &map);
+	void eg3200_bank_keyboard(address_map &map);
 	void rtc_clock();
         uint8_t m_int_counter; /* count 40 25msec interrupts for 1Hz RTC */
 	uint8_t m_vidmode; /* video mode  0: 16x64, 1: 24x80, 2: 25x80 */
@@ -99,7 +101,8 @@ private:
 	required_device<cpu_device> m_maincpu;
 	required_device<ram_device> m_mainram;
 	required_region_ptr<u8> m_p_chargen;
-	required_device<address_map_bank_device> m_bank_dk;
+	required_device<address_map_bank_device> m_bank_fdc;
+	required_device<address_map_bank_device> m_bank_keyboard;
 	optional_device<centronics_device> m_centronics;
 	optional_device<output_latch_device> m_cent_data_out;
 	optional_device<input_buffer_device> m_cent_status_in;
