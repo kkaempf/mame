@@ -18,6 +18,8 @@
 #include "machine/buffer.h"
 #include "machine/wd_fdc.h"
 #include "emupal.h"
+#include "sound/spkrdev.h"
+#include "speaker.h"
 
 class eg3200_state : public driver_device
 {
@@ -38,6 +40,7 @@ public:
 		, m_floppy2(*this, "fdc:2")
 		, m_floppy3(*this, "fdc:3")
 		, m_io_keyboard(*this, "LINE%u", 0)
+		, m_speaker(*this, "speaker")
         { }
 
 	void eg3200(machine_config &config);
@@ -64,6 +67,7 @@ private:
 	uint8_t rtc_r();
 	void rtc_w(uint8_t data);
 	void rtc_rdwr_w(uint8_t data);
+        void port_ff_w(u8 data);
 
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
 
@@ -112,6 +116,7 @@ private:
 	optional_device<floppy_connector> m_floppy2;
 	optional_device<floppy_connector> m_floppy3;
 	required_ioport_array<11> m_io_keyboard;
+	required_device<speaker_sound_device> m_speaker;
 };
 
 #endif // MAME_INCLUDES_EG3200_H

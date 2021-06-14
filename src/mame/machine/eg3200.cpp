@@ -507,6 +507,16 @@ uint8_t eg3200_state::keyboard_r(offs_t offset)
 }
 
 
+void eg3200_state::port_ff_w(u8 data)
+{
+	static const double speaker_levels[4] = { 0.0, -1.0, 0.0, 1.0 };
+	m_speaker->set_levels(4, speaker_levels);
+
+	/* Speaker for System-80 MK II - only sounds if relay is off */
+	if (!(BIT(data, 2)))
+		m_speaker->level_w(data & 3);
+}
+
 /*************************************
  *  Machine              *
  *************************************/

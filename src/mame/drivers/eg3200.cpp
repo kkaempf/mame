@@ -77,6 +77,9 @@ Banked memory (switched via port 0xFA)
 
 I/O ports
 
+FF: speaker for TRS80 games
+    (just in MAME, not in original hardware)
+
 FD: printer port (output = data, input = status)
 - bit 7 : busy (active high)
 - bit 6 : out of paper (active high)
@@ -162,7 +165,9 @@ void eg3200_state::eg3200_io(address_map &map)
         map(0xfa, 0xfa).nopr();
         map(0xfb, 0xfc).noprw();
         map(0xfd, 0xfd).rw(FUNC(eg3200_state::printer_r), FUNC(eg3200_state::printer_w));
-        map(0xfe, 0xff).noprw();
+        map(0xfe, 0xfe).noprw();
+	map(0xff, 0xff).nopr();
+	map(0xff, 0xff).w(FUNC(eg3200_state::port_ff_w));
 }
 
 void eg3200_state::eg3200_mem(address_map &map)
@@ -416,6 +421,10 @@ void eg3200_state::eg3200(machine_config &config)
 	m_centronics->set_output_latch(*m_cent_data_out);
 
 	RS232_PORT(config, "rs232", default_rs232_devices, nullptr);
+
+	/* sound hardware */
+	SPEAKER(config, "mono").front_center();
+	SPEAKER_SOUND(config, "speaker").add_route(ALL_OUTPUTS, "mono", 0.50);
 }
 
 
