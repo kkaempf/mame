@@ -12,6 +12,7 @@
 #include "cpu/z80/z80.h"
 #include "machine/ram.h"
 #include "machine/bankdev.h"
+#include "imagedev/cassette.h"
 #include "imagedev/floppy.h"
 #include "imagedev/snapquik.h"
 #include "bus/rs232/rs232.h"
@@ -41,6 +42,7 @@ public:
 		, m_floppy3(*this, "fdc:3")
 		, m_io_keyboard(*this, "LINE%u", 0)
 		, m_speaker(*this, "speaker")
+		, m_cassette(*this, "cassette")
         { }
 
 	void eg3200(machine_config &config);
@@ -68,10 +70,12 @@ private:
 	void rtc_w(uint8_t data);
 	void rtc_rdwr_w(uint8_t data);
         void port_ff_w(u8 data);
+        uint8_t port_ff_r();
 
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
 
 	DECLARE_WRITE_LINE_MEMBER(intrq_w);
+	TIMER_CALLBACK_MEMBER(cassette_data_callback);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(quickload_cb);
 	uint32_t screen_update_eg3200(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -93,7 +97,10 @@ private:
 	uint8_t m_nmi_mask;
 	uint8_t m_motor; /* last value written to 0x37e1 */
 	bool m_reg_load;
+	bool m_cassette_data = false;
 	uint8_t m_nmi_data;
+	emu_timer *m_cassette_data_timer;
+	double m_old_cassette_val = 0;
 	uint16_t m_start_address;
 	uint8_t m_crtc_reg;
 	uint8_t m_size_store;
@@ -117,6 +124,7 @@ private:
 	optional_device<floppy_connector> m_floppy3;
 	required_ioport_array<11> m_io_keyboard;
 	required_device<speaker_sound_device> m_speaker;
+	required_device<cassette_image_device> m_cassette;
 };
 
 #endif // MAME_INCLUDES_EG3200_H

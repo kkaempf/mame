@@ -140,6 +140,7 @@ E0: RTC addr/data
 #include "formats/trs80_dsk.h"
 #include "formats/dmk_dsk.h"
 
+#include "formats/trs_cas.h"
 
 static void eg3200_floppies(device_slot_interface &device)
 {
@@ -365,7 +366,8 @@ void eg3200_state::floppy_formats(format_registration &fr)
 void eg3200_state::eg3200(machine_config &config)
 {
 	/* basic machine hardware */
-	Z80(config, m_maincpu, 4_MHz_XTAL);
+//	Z80(config, m_maincpu, 4_MHz_XTAL);
+	Z80(config, m_maincpu, 10.6445_MHz_XTAL / 6);
 	m_maincpu->set_addrmap(AS_PROGRAM, &eg3200_state::eg3200_mem);
 	m_maincpu->set_addrmap(AS_IO, &eg3200_state::eg3200_io);
 
@@ -425,6 +427,13 @@ void eg3200_state::eg3200(machine_config &config)
 	/* sound hardware */
 	SPEAKER(config, "mono").front_center();
 	SPEAKER_SOUND(config, "speaker").add_route(ALL_OUTPUTS, "mono", 0.50);
+
+	/* cassette hardware */
+	CASSETTE(config, m_cassette);
+	m_cassette->set_formats(trs80l2_cassette_formats);
+	m_cassette->set_default_state(CASSETTE_PLAY);
+	m_cassette->add_route(ALL_OUTPUTS, "mono", 0.05);
+	m_cassette->set_interface("eg3200_cass");
 }
 
 

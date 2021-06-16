@@ -509,12 +509,40 @@ uint8_t eg3200_state::keyboard_r(offs_t offset)
 
 void eg3200_state::port_ff_w(u8 data)
 {
-	static const double speaker_levels[4] = { 0.0, -1.0, 0.0, 1.0 };
+	static const double levels[4] = { 0.0, 1.0, -1.0, 0.0 };
+
+	m_cassette->output(levels[data & 3]);
+	m_cassette_data = false;
+
+	static const double speaker_levels[4] = { 0.5, +1.0, 0.0, 0.5 };
 	m_speaker->set_levels(4, speaker_levels);
 
 	/* Speaker for System-80 MK II - only sounds if relay is off */
 	if (!(BIT(data, 2)))
 		m_speaker->level_w(data & 3);
+}
+
+
+uint8_t eg3200_state::port_ff_r()
+{
+/* Cassette data
+    d7 cassette data from tape
+    d6 '1' */
+
+	return 0x40 | (m_cassette_data ? 0x80 : 0) | 0x3f;
+}
+
+TIMER_CALLBACK_MEMBER(eg3200_state::cassette_data_callback)
+{
+// This does all baud rates. 250 baud (trs80), and 500 baud (all others) set bit 7 of "cassette_data".
+
+	double new_val = (m_cassette->input());
+
+	/* Check for HI-LO transition */
+	if ( m_old_cassette_val > -0.2 && new_val < -0.2 )
+		m_cassette_data = true;
+
+	m_old_cassette_val = new_val;
 }
 
 /*************************************
@@ -533,6 +561,10 @@ void eg3200_state::machine_start()
         m_rtc_regs = std::make_unique<uint8_t[]>(RTC_REG_COUNT);
 	uint8_t *rom = memregion("bios")->base();
 	uint8_t *ram = m_mainram->pointer();
+	save_item(NAME(m_cassette_data));
+	save_item(NAME(m_old_cassette_val));
+	m_cassette_data_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(eg3200_state::cassette_data_callback),this));
+	m_cassette_data_timer->adjust( attotime::zero, 0, attotime::from_hz(11025) );
 
 	membank("bankr_rom")->configure_entry(0, &rom[0]);
 	membank("bankr_rom")->configure_entry(1, &ram[0]);
@@ -550,6 +582,7 @@ void eg3200_state::machine_reset()
     uint8_t wday;
     struct tm *lt;
     time_t t;
+	m_cassette_data = false;
 	m_size_store = 0xff;
         m_irq = 0;
         m_int_counter = 0;
